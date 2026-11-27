@@ -1,6 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
-    <style>
+    <header class="fer-page__heading"><h1>Checklist</h1></header>
+<style>
         .resposta-ok { color: #1bc5bd; font-weight: bold; background: #c9f7f5; padding: 4px 8px; border-radius: 4px; }
         .resposta-problema { color: #f64e60; font-weight: bold; background: #ffe2e5; padding: 4px 8px; border-radius: 4px; }
         .foto-box { background: #f8f9fa; border: 1px solid #e4e6ef; border-radius: 8px; padding: 10px; transition: 0.3s; }
@@ -9,7 +13,7 @@
     </style>
 
     <div class="d-flex flex-column flex-column-fluid" id="kt_content">
-        <div class="card card-custom gutter-b shadow-sm border-0">
+        <div class="fer-page fer-operational fer-detail card card-custom gutter-b shadow-sm border-0">
             <div class="card-header border-0 py-5">
                 <h3 class="card-title align-items-start flex-column">
                 <span class="card-label font-weight-bolder text-dark">

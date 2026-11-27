@@ -1,6 +1,7 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
+    <meta charset="UTF-8">
     <title>{{ config('app.name', '') }}</title>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.2/css/materialize.min.css">
@@ -14,8 +15,9 @@
             font-size: 34px;
         }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/ui-standalone-forms.css') }}?v={{ filemtime(public_path('css/ui-standalone-forms.css')) }}">
 </head>
-<body>
+<body class="fer-standalone-form fer-not-found-form">
 
     <nav class="grey darken-3">
 

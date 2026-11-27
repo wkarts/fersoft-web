@@ -1,13 +1,16 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-operations.css') }}?v={{ filemtime(public_path('css/ui-operations.css')) }}">
+@endpush
 @section('content')
-<div class="card card-custom">
+<div class="operations-page operations-page--stock-detail">
     <div class="card-header">
-        <h3 class="card-title">Histórico de Movimentação: <strong>{{ $item->produto->nome }}</strong></h3>
+        <h3 class="card-title operations-page__title">Histórico de Movimentação: <strong>{{ $item->produto->nome }}</strong></h3>
         <div class="card-toolbar">
             <a href="/estoque" class="btn btn-secondary btn-sm">Voltar</a>
         </div>
     </div>
-    <div class="card-body">
+    <div class="operations-page__content card-body">
         <div class="table-responsive">
             <table class="table table-hover">
                 <thead>

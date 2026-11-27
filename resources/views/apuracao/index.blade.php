@@ -1,4 +1,7 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+@endpush
 @section('content')
     <style>
         /* Tabela Analítica */
@@ -30,7 +33,7 @@
         }
     </style>
 
-    <div class="container mt-5">
+    <div class="document-fiscal-page document-fiscal-page--apuracao container mt-5">
         <div class="card card-custom gutter-b" id="apuracao-relatorio">
             <div class="card-header py-3">
                 <div class="header-custom d-flex align-items-center justify-content-between w-100">

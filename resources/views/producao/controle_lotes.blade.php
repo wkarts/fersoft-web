@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 @section('content')
 
-    <div class="card card-custom gutter-b">
+    <div class="fer-page fer-operational fer-list card card-custom gutter-b">
         <div class="card-header border-0 py-5">
             <h3 class="card-title align-items-start flex-column">
                 <span class="card-label font-weight-bolder text-dark">Controle de Lotes & Rastreabilidade</span>

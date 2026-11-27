@@ -1,0 +1,281 @@
+/* Estoque, importação fiscal e catálogo de relatórios no sistema visual FERSOFT.
+   Escopo local; rotas, formulários, modais, dados e eventos seguem nas views. */
+.operations-page {
+    --op-surface: #fff;
+    --op-soft: #fafcfc;
+    --op-ink: #182f36;
+    --op-muted: #62777d;
+    --op-border: #dce7e7;
+    --op-accent: #1f9866;
+    --op-accent-dark: #15754f;
+    --op-accent-soft: #eaf5ef;
+    background: transparent;
+    color: var(--op-ink);
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    font-family: Poppins, Inter, system-ui, sans-serif;
+}
+.operations-page, .operations-page *, .operations-dialog, .operations-dialog * { box-sizing: border-box; }
+body.ui-theme-refined--dark .operations-page {
+    --op-surface: #1c333b;
+    --op-soft: #223b43;
+    --op-ink: #eef6f4;
+    --op-muted: #b7c8cb;
+    --op-border: #38535c;
+    --op-accent: #62d3ab;
+    --op-accent-dark: #8fdab7;
+    --op-accent-soft: #23483d;
+}
+.operations-page .operations-page__content {
+    padding: 24px;
+    background: var(--op-surface);
+    border: 1px solid var(--op-border);
+    border-radius: 12px;
+    box-shadow: 0 4px 18px #213b4510;
+    min-width: 0;
+}
+.operations-page--stock-detail {
+    overflow: hidden;
+    background: var(--op-surface);
+    border: 1px solid var(--op-border);
+    border-radius: 12px;
+    box-shadow: 0 4px 18px #213b4510;
+}
+.operations-page--stock-detail > .card-header {
+    min-height: 56px;
+    display: flex;
+    align-items: center;
+    padding: 14px 20px;
+    background: var(--op-surface);
+    border-bottom: 1px solid var(--op-border);
+}
+.operations-page--stock-detail > .operations-page__content { border: 0; border-radius: 0; box-shadow: none; }
+.operations-page .operations-page__title {
+    margin: 0;
+    padding: 0;
+    color: var(--op-ink) !important;
+    font: 600 21px/1.35 Poppins, Inter, system-ui, sans-serif;
+    letter-spacing: -.035em;
+}
+.operations-page .operations-panel {
+    min-width: 0;
+    background: var(--op-surface);
+    border: 1px solid var(--op-border) !important;
+    border-radius: 12px;
+    box-shadow: 0 4px 18px #213b4510;
+    overflow: visible;
+}
+.operations-page .operations-panel > .card-header {
+    min-height: 56px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--op-border);
+    background: var(--op-surface) !important;
+    border-radius: 12px 12px 0 0;
+}
+.operations-page .operations-panel > .card-body { padding: 20px; }
+.operations-page .operations-panel > .card-footer { padding: 14px 20px; border-top: 1px solid var(--op-border); background: var(--op-soft); }
+.operations-page .operations-panel .card-title,
+.operations-page :is(h4, h5):not(.modal-title) {
+    color: var(--op-ink) !important;
+    line-height: 1.4;
+    font-weight: 600;
+}
+.operations-page .form-group { min-width: 0; }
+.operations-page label, .operations-page .col-form-label { color: var(--op-muted); font-size: 11px; font-weight: 600; line-height: 1.45; }
+.operations-page .col-form-label { padding: 0; margin-bottom: 7px; }
+.operations-page :is(.form-control, .custom-select, .select2-container .select2-selection) {
+    min-height: 38px;
+    color: var(--op-ink);
+    background: var(--op-surface);
+    border: 1px solid var(--op-border);
+    border-radius: 8px;
+    box-shadow: none;
+    font: 500 11px/1.5 Poppins, Inter, system-ui, sans-serif;
+}
+.operations-page :is(.form-control, .custom-select) { height: auto; padding: 8px 11px; }
+.operations-page textarea.form-control { min-height: 88px; resize: vertical; }
+.operations-page :is(.form-control, .custom-select, .select2-container .select2-selection):focus,
+.operations-dialog :is(.form-control, .custom-select):focus {
+    border-color: var(--op-accent, #1f9866);
+    outline: 2px solid #1f986666;
+    outline-offset: 1px;
+    box-shadow: none;
+}
+.operations-page .select2-container { max-width: 100%; }
+.operations-page .select2-container .select2-selection { display: flex; align-items: center; }
+.operations-page .input-group-text { background: var(--op-soft); color: var(--op-muted); border: 1px solid var(--op-border); min-height: 38px; }
+.operations-page :is(.btn, button.btn, a.btn) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 36px;
+    padding: 8px 13px;
+    border-radius: 8px;
+    box-shadow: none;
+    font: 600 11px/1.4 Poppins, Inter, system-ui, sans-serif;
+    text-decoration: none;
+    white-space: normal;
+}
+.operations-page .btn i { color: inherit; margin: 0; font-size: 15px; }
+.operations-page :is(.btn-primary, .btn-success) { background: var(--op-accent) !important; border-color: var(--op-accent) !important; color: #fff !important; }
+.operations-page :is(.btn-primary, .btn-success):hover { background: var(--op-accent-dark) !important; border-color: var(--op-accent-dark) !important; }
+.operations-page :is(.btn-info, .btn-light-primary, .btn-light-success) { background: var(--op-accent-soft) !important; border-color: #cde9da !important; color: var(--op-accent-dark) !important; }
+.operations-page :is(.btn-info, .btn-light-primary, .btn-light-success):hover { border-color: var(--op-accent) !important; }
+.operations-page :is(.btn-danger, .btn-light-danger) { background: #fff0f2 !important; border-color: #f4d5da !important; color: #c94e5d !important; }
+.operations-page .btn-warning { background: #fff8e8 !important; border-color: #f3e1b7 !important; color: #986324 !important; }
+.operations-page .btn.disabled, .operations-page .btn:disabled { opacity: .55; cursor: not-allowed; }
+.operations-page :is(a, button, input, select, textarea):focus-visible,
+.operations-dialog :is(a, button, input, select, textarea):focus-visible { outline: 2px solid var(--op-accent, #1f9866); outline-offset: 2px; }
+.operations-page :is(.table-responsive, .datatable) { min-width: 0; max-width: 100%; overflow-x: auto; scrollbar-color: #c5d6d6 transparent; }
+.operations-page table.table { width: 100%; color: var(--op-ink); border-collapse: collapse; }
+.operations-page table.table th {
+    padding: 10px 12px;
+    color: var(--op-muted);
+    background: var(--op-soft);
+    border-bottom: 1px solid var(--op-border);
+    text-align: left;
+    font-size: 10px;
+    font-weight: 600;
+}
+.operations-page table.table td {
+    padding: 11px 12px;
+    color: var(--op-ink);
+    border-bottom: 1px solid var(--op-border);
+    vertical-align: middle;
+    font-size: 11px;
+}
+.operations-page table.table tbody tr:hover { background: var(--op-soft); }
+.operations-page .operations-filters { padding: 16px 18px 2px; border: 1px solid var(--op-border); border-radius: 10px; background: var(--op-soft); }
+.operations-page .operations-filters > .card-body { padding: 0; }
+.operations-page .operations-filters .form-group { margin-bottom: 14px; }
+.operations-page .alert { border-radius: 9px; }
+.operations-page .text-info, .operations-page .text-primary { color: var(--op-accent-dark) !important; }
+.operations-page hr { border-color: var(--op-border); }
+
+/* As quatro métricas reais do estoque usam a mesma geometria do dashboard aprovado. */
+.operations-page--stock .operations-metric {
+    height: 100%;
+    min-height: 122px;
+    background: var(--op-surface) !important;
+    color: var(--op-ink) !important;
+    border: 1px solid var(--op-border) !important;
+    border-radius: 12px;
+    box-shadow: 0 4px 18px #213b4510;
+}
+.operations-page--stock .operations-metric .card-body { padding: 17px 18px; align-items: start; text-align: left !important; }
+.operations-page--stock .operations-metric .card-title { color: var(--op-muted) !important; font-size: 10px; letter-spacing: .055em; margin-bottom: 8px !important; }
+.operations-page--stock .operations-metric h3 { color: var(--op-ink) !important; font-size: 25px; letter-spacing: -.04em; }
+.operations-page--stock .operations-metric.bg-success h3 { color: var(--op-accent-dark) !important; }
+.operations-page--stock .operations-metric.bg-danger h3 { color: #c94e5d !important; }
+.operations-page--stock .nav-tabs { border-bottom: 1px solid var(--op-border); gap: 4px; }
+.operations-page--stock .nav-tabs .nav-link { border: 0; border-bottom: 2px solid transparent; border-radius: 0; color: var(--op-muted); font-size: 11px; }
+.operations-page--stock .nav-tabs .nav-link.active { background: transparent; border-bottom-color: var(--op-accent); color: var(--op-accent-dark); }
+
+/* Os formulários de relatórios continuam com seus filtros e ações originais. */
+.operations-page--reports .operations-page__content { padding: 20px; }
+.operations-page--reports #kt_user_profile_aside { margin: 0 !important; }
+.operations-page--reports .operations-report-card {
+    background: var(--op-surface);
+    border: 1px solid var(--op-border) !important;
+    border-radius: 10px;
+    box-shadow: 0 4px 18px #213b450a;
+    overflow: hidden;
+    margin-bottom: 12px;
+}
+.operations-page--reports .operations-report-card > .operations-report-header {
+    min-height: 54px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--op-border);
+    border-radius: 10px 10px 0 0 !important;
+    background: var(--op-surface) !important;
+}
+.operations-page--reports .operations-report-header > .card-title { cursor: pointer; width: 100%; margin: 0; }
+.operations-page--reports .operations-report-header h3.card-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 9px;
+    margin: 0;
+    color: var(--op-ink) !important;
+    font-size: 12px;
+    font-weight: 600;
+}
+.operations-page--reports .operations-report-header .la-angle-double-down { color: var(--op-accent) !important; font-size: 15px; }
+.operations-page--reports .operations-report-card .card-content { padding: 18px 16px; border-top: 0; }
+.operations-page--reports .operations-report-card .card-content > .col-xl-12 { padding: 0; }
+.operations-page--reports .operations-report-card form { margin: 0; }
+
+/* Importação de XML: painel DANFE e blocos fiscais com a mesma superfície. */
+.operations-page--purchase :is(.bg-light-primary, .bg-light-secondary, .bg-light) {
+    background: var(--op-soft) !important;
+    color: var(--op-ink);
+    border: 1px solid var(--op-border);
+    border-radius: 9px;
+}
+.operations-page--purchase #danfeHeader {
+    background: var(--op-soft) !important;
+    border-color: var(--op-border) !important;
+    box-shadow: none !important;
+}
+.operations-page--purchase .titulo-danfe { color: var(--op-ink); font-size: 19px; font-weight: 600; }
+.operations-page--purchase .danfe-key { background: var(--op-accent-soft); color: var(--op-accent-dark); border-radius: 7px; }
+.operations-page--purchase .label-title { color: var(--op-muted); }
+.operations-page--purchase .label-value { color: var(--op-ink); }
+.operations-page--purchase .search-prod { background: var(--op-surface); border: 1px solid var(--op-border); border-radius: 8px; box-shadow: 0 12px 24px #213b451a; }
+.operations-page--purchase .search-prod label:hover { background: var(--op-accent-soft); color: var(--op-accent-dark) !important; }
+
+.operations-dialog .modal-dialog { max-width: min(900px, calc(100vw - 28px)); margin: 22px auto; }
+.operations-dialog .modal-dialog.modal-xl { max-width: min(1120px, calc(100vw - 28px)); }
+.operations-dialog .modal-content { border: 1px solid #dce7e7; border-radius: 12px; background: #fff; box-shadow: 0 20px 60px #213b4530; overflow: hidden; }
+.operations-dialog .modal-header { padding: 17px 20px; border-bottom: 1px solid #dce7e7; background: #fafcfc; }
+.operations-dialog .modal-header .modal-title { color: #182f36; font: 600 16px/1.4 Poppins, Inter, system-ui, sans-serif; }
+.operations-dialog .modal-header .close { min-width: 34px; min-height: 34px; border-radius: 7px; color: #62777d; opacity: 1; }
+.operations-dialog .modal-body { max-height: calc(100dvh - 180px); overflow-y: auto; padding: 20px; }
+.operations-dialog .modal-footer { padding: 14px 20px; border-top: 1px solid #dce7e7; background: #fafcfc; }
+.operations-dialog :is(.form-control, .custom-select) { min-height: 38px; border: 1px solid #dce7e7; border-radius: 8px; color: #182f36; background: #fff; }
+.operations-dialog label { color: #62777d; font-size: 11px; font-weight: 600; }
+.operations-dialog :is(.btn, button.btn, a.btn) { min-height: 36px; border-radius: 8px; box-shadow: none; font: 600 11px/1.4 Poppins, Inter, system-ui, sans-serif; }
+.operations-dialog :is(.btn-primary, .btn-success) { background: #1f9866 !important; border-color: #1f9866 !important; color: #fff !important; }
+.operations-dialog .btn-info { background: #eaf5ef !important; border-color: #cde9da !important; color: #15754f !important; }
+.operations-dialog .btn-danger { background: #fff0f2 !important; border-color: #f4d5da !important; color: #c94e5d !important; }
+.operations-dialog .wizard-steps { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 !important; border-bottom: 1px solid #dce7e7; }
+.operations-dialog .wizard-step { width: auto; flex: 0 1 auto; min-width: 120px; min-height: 43px; cursor: pointer; }
+.operations-dialog .wizard-step .wizard-label { display: flex; align-items: center; min-height: 43px; padding: 0 13px; }
+.operations-dialog .wizard-step .wizard-title { margin: 0; color: #62777d !important; font: 600 11px/1.4 Poppins, Inter, system-ui, sans-serif; }
+.operations-dialog .wizard-step .wizard-bar { height: 2px; background: transparent; }
+.operations-dialog .wizard-step[data-wizard-state="current"] .wizard-title { color: #15754f !important; }
+.operations-dialog .wizard-step[data-wizard-state="current"] .wizard-bar { background: #1f9866; }
+.operations-dialog table.table { width: 100%; border-collapse: collapse; }
+.operations-dialog table.table th { background: #fafcfc; color: #62777d; font-size: 10px; padding: 10px 12px; }
+.operations-dialog table.table td { padding: 11px 12px; font-size: 11px; border-bottom: 1px solid #dce7e7; }
+body.ui-theme-refined--dark .operations-dialog .modal-content { background: #1c333b; border-color: #38535c; }
+body.ui-theme-refined--dark .operations-dialog :is(.modal-header, .modal-footer) { background: #223b43; border-color: #38535c; }
+body.ui-theme-refined--dark .operations-dialog .modal-header .modal-title { color: #eef6f4; }
+body.ui-theme-refined--dark .operations-dialog .modal-header .close { color: #b7c8cb; }
+body.ui-theme-refined--dark .operations-dialog :is(.form-control, .custom-select) { background: #1c333b; border-color: #38535c; color: #eef6f4; }
+body.ui-theme-refined--dark .operations-dialog label { color: #b7c8cb; }
+body.ui-theme-refined--dark .operations-dialog .wizard-step .wizard-title { color: #b7c8cb !important; }
+body.ui-theme-refined--dark .operations-dialog .wizard-step[data-wizard-state="current"] .wizard-title { color: #8fdab7 !important; }
+body.ui-theme-refined--dark .operations-dialog :is(.btn-primary, .btn-success) { color: #11252c !important; }
+body.ui-theme-refined--dark .operations-page :is(.btn-primary, .btn-success) { color: #11252c !important; }
+
+@media (max-width: 991px) {
+    .operations-page .operations-page__content { padding: 18px; }
+    .operations-page .operations-panel > .card-body { padding: 16px; }
+    .operations-page--stock .operations-metric { margin-bottom: 10px; }
+}
+@media (max-width: 575px) {
+    .operations-page .operations-page__content { padding: 14px; }
+    .operations-page .operations-page__title { font-size: 19px; }
+    .operations-page .operations-panel > .card-body { padding: 13px; }
+    .operations-page--reports .operations-page__content { padding: 12px; }
+    .operations-page--reports .operations-report-card .card-content { padding: 13px; }
+    .operations-page--stock .operations-metric { min-height: 105px; }
+    .operations-page--stock .btn-group { display: flex; flex-wrap: wrap; gap: 7px; box-shadow: none !important; }
+    .operations-page--stock .btn-group > * { border-radius: 8px !important; }
+    .operations-dialog .modal-dialog { max-width: calc(100vw - 16px); margin: 8px auto; }
+    .operations-dialog .modal-body { max-height: calc(100dvh - 135px); padding: 14px; }
+    .operations-dialog .modal-footer { gap: 8px; justify-content: stretch; }
+}

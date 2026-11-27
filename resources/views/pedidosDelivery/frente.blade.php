@@ -1,5 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 @section('content')
+<header class="fer-page__heading"><h1>Frente de Pedido de Delivery</h1></header>
 
 <style type="text/css">
 	
@@ -83,7 +88,7 @@
 	}
 </style>
 
-<div class="card card-custom gutter-b">
+<div class="card card-custom gutter-b fer-page fer-detail">
 	<div class="card-body">
 		<input type="hidden" value="{{ csrf_token() }}" id="_token">
 		<input type="hidden" value="{{ $config->tipo_divisao_pizza }}" id="divide_pizza">
@@ -240,7 +245,7 @@
 </div>
 
 <div class="modal fade" id="modal-list" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-xl" role="document">
+	<div class="modal-dialog modal-xl fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">Itens do Pedido</h5>
@@ -264,7 +269,7 @@
 </div>
 
 <div class="modal fade" id="modal-endereco" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="modal-dialog modal-lg fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">Cadastrar Endereço</h5>
@@ -330,7 +335,7 @@
 
 
 <div class="modal fade" id="modal-cliente" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="modal-dialog modal-lg fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">Cadastrar Cliente</h5>
@@ -382,7 +387,7 @@
 </div>
 
 <div class="modal fade" id="modal-adicionais" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-xl" role="document">
+	<div class="modal-dialog modal-xl fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title title-modal">Adicionais do Produto</h5>
@@ -448,7 +453,7 @@
 </div>
 
 <div class="modal fade" id="modal-adicionais-pizza" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-xl" role="document">
+	<div class="modal-dialog modal-xl fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title title-modal">Adicionais para pizza</h5>
@@ -513,7 +518,7 @@
 </div>
 
 <div class="modal fade" id="modal-pizzas" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-xl" role="document">
+	<div class="modal-dialog modal-xl fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title title-modal">Produtos do tipo Pizza</h5>
@@ -584,7 +589,7 @@
 </div>
 
 <div class="modal fade" id="modal-finalizar-pedido" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-xl" role="document">
+	<div class="modal-dialog modal-xl fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">Finalizar Pedido</h5>

@@ -1,11 +1,14 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+@endpush
 @section('content')
 <style type="text/css">
 	.btn{
 		margin-left: 5px;
 	}
 </style>
-<div class="card card-custom gutter-b">
+<div class="document-fiscal-page document-fiscal-page--cte-os card card-custom gutter-b">
 	<div class="card-body">
 		<h5>Para emissão do CTe é necessario ter cadastrado:</h5>
 		<h5>* Emitente fiscal com certificado digital</h5>

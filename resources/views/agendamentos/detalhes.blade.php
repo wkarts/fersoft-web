@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 @section('content')
 
-    <div class="card card-custom gutter-b shadow-sm border-0 rounded-lg">
+    <div class="fer-extra fer-extra--support fer-extra--agendamentos fer-extra--canvas card card-custom gutter-b shadow-sm border-0 rounded-lg">
         <div class="card-body p-6">
             <!-- CABEÇALHO -->
             <div class="d-flex flex-wrap justify-content-between align-items-center mb-6 gap-3">
@@ -106,7 +110,7 @@
     </div>
 
     <!-- MODAL DE JUSTIFICATIVA DO CANCELAMENTO -->
-    <div class="modal fade" id="modal-cancelar" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal fer-extra-modal fade" id="modal-cancelar" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <form method="post" action="/agendamentos/cancelar/{{ $agendamento->id }}">

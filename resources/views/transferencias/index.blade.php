@@ -1,6 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 @section('content')
-<div class="card card-custom gutter-b">
+<header class="fer-page__heading"><h1>Nova Transferência</h1></header>
+<div class="card card-custom gutter-b fer-page fer-detail">
 	<input type="hidden" id="pass" value="{{ $config->senha_remover ?? '' }}">
 	<div class="card-body @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 		<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
@@ -209,7 +214,7 @@
 	})
 </script>
 <div class="modal fade" id="modal-manual-transferencia" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-    <div class="modal-dialog modal-xl" role="document">
+    <div class="modal-dialog modal-xl fer-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header bg-light">
                 <h5 class="modal-title text-info font-weight-bold">

@@ -1,4 +1,7 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 
 @section('css')
     <style type="text/css">
@@ -21,7 +24,8 @@
 
 @section('content')
 
-    <div class="row" id="anime" style="display: none">
+    <header class="fer-page__heading"><h1>Importando XML</h1></header>
+<div class="row" id="anime" style="display: none">
         <div class="col s8 offset-s2">
             <lottie-player src="/anime/success.json" background="transparent" speed="0.8" style="width: 100%; height: 300px;"    autoplay >
             </lottie-player>
@@ -30,13 +34,13 @@
 
     <div class="@if(env('ANIMACAO')) animate__animated @endif animate__bounce" id="content" style="display: block">
         <div class=" d-flex flex-column flex-column-fluid" id="kt_content">
-            <div class="card card-custom gutter-b example example-compact">
+            <div class="fer-page fer-operational fer-form card card-custom gutter-b example example-compact">
                 <div class="col-12 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
                     <div class="col-lg-12">
                         <!--begin::Portlet-->
 
                         <input type="hidden" name="id" value="{{{ isset($cliente) ? $cliente->id : 0 }}}">
-                        <div class="card card-custom gutter-b example example-compact">
+                        <div class="fer-panel card card-custom gutter-b example example-compact">
                             <div class="card-header d-flex justify-content-between align-items-center">
                                 <h3 class="card-title">Importando XML</h3>
                                 <button type="button" class="btn btn-light-primary font-weight-bold btn-sm" data-toggle="modal" data-target="#modal-manual-devolucao">
@@ -316,7 +320,7 @@
     <div class="modal-loading loading-class"></div>
 
     <div class="modal fade" id="modal2" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-        <div class="modal-dialog modal-xl" role="document">
+        <div class="fer-dialog modal-dialog modal-xl" role="document">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="data"></h5>
@@ -443,7 +447,7 @@
     </div>
 
     <div class="modal fade" id="modal-transportadora" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-        <div class="modal-dialog modal-xl" role="document">
+        <div class="fer-dialog modal-dialog modal-xl" role="document">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Nova Transportadora</h5>

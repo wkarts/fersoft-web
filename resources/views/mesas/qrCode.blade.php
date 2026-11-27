@@ -1,4 +1,7 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 
 @section('css')
 <style type="text/css">
@@ -15,13 +18,14 @@
 @endsection
 @section('content')
 
-<div class="card card-custom gutter-b noPrint">
+<header class="fer-page__heading"><h1>Lista de Mesas</h1></header>
+<div class="fer-page fer-operational fer-list card card-custom gutter-b noPrint">
 
 	<div class="card-body">
 		<div class="" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
 
 			<p class="text-info">Informe a url para gerar o QrCode, exemplo: https://meurestaurante.com.br</p>
-			<form method="get" action="" class="row">
+			<form method="get" action="" class="fer-filter row">
 				<div class="col-lg-4">
 					<div class="form-group">
 						<input type="text" name="url" class="form-control" placeholder="URL do controle de comandas">

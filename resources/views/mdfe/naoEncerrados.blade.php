@@ -1,12 +1,15 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-fiscal.css') }}?v={{ filemtime(public_path('css/ui-fiscal.css')) }}">
+@endpush
 @section('content')
 
-<div class="card card-custom gutter-b">
-	<div class="card-body @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
+<div class="fiscal-page fiscal-page--mdfe-naoEncerrados">
+	<div class="fiscal-page__content card-body @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 
 		<div class="" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
 			<div class="col-xl-12">
-				<h4>{{$title}}</h4>
+				<h4 class="fiscal-page__title">{{$title}}</h4>
 
 				<div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded">
 

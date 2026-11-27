@@ -11,6 +11,19 @@
     );
 @endphp
 
+@if(config('ui_theme.active', false))
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Acesso não permitido</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Poppins:300,400,500,600,700">
+    <link rel="stylesheet" href="{{ asset('css/ui-auth.css') }}?v={{ filemtime(public_path('css/ui-auth.css')) }}">
+</head>
+<body class="fer-auth fer-auth--error">
+<main class="flex-root"><div class="fer-error-card">
+@endif
 <h1>
     Acesso não permitido, contate o desenvolvedor para liberação!
 
@@ -24,3 +37,8 @@
         </a>
     @endif
 </h1>
+@if(config('ui_theme.active', false))
+</div></main>
+</body>
+</html>
+@endif

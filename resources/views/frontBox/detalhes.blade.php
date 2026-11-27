@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-pos-pages.css') }}?v={{ filemtime(public_path('css/ui-pos-pages.css')) }}">
+@endpush
+
 @section('content')
 
-<div class="card card-custom gutter-b">
+<div class="fer-pos-page fer-pos-page--detalhes card card-custom gutter-b">
 
 	<div class="card-body">
 		<div class="content d-flex flex-column flex-column-fluid" id="kt_content" >

@@ -1,8 +1,11 @@
 {{-- resources/views/relatorios/nfe_numeracao_gaps/index.blade.php --}}
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+@endpush
 
 @section('content')
-    <div class="report-nfe-gaps">
+    <div class="document-fiscal-page document-fiscal-page--relatorios report-nfe-gaps">
         @php
             // Ambiente fiscal auto detectado
             // Prioriza variável já passada (se algum controller enviar),
@@ -639,7 +642,7 @@
     {{-- ========================================= --}}
 
     <!-- Modal Reutilizável de Confirmação -->
-    <div class="modal fade" id="modalConfirmacao" tabindex="-1" role="dialog" aria-labelledby="modalConfirmacaoLabel" aria-hidden="true">
+    <div class="modal fade document-fiscal-dialog" id="modalConfirmacao" tabindex="-1" role="dialog" aria-labelledby="modalConfirmacaoLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
                 <!-- Cabeçalho -->
@@ -663,7 +666,7 @@
     </div>
 
     <!-- Modal Reutilizável para Alertas e Mensagens -->
-    <div class="modal fade" id="modalMensagem" tabindex="-1" role="dialog" aria-labelledby="modalMensagemLabel" aria-hidden="true">
+    <div class="modal fade document-fiscal-dialog" id="modalMensagem" tabindex="-1" role="dialog" aria-labelledby="modalMensagemLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
                 <!-- Cabeçalho -->
@@ -688,7 +691,7 @@
     {{-- ========================================= --}}
     {{-- MODAL: INUTILIZAÇÃO DOS GAPS DE NUMERAÇÃO --}}
     {{-- ========================================= --}}
-    <div class="modal fade" id="modalInutilizacaoNfeGap" tabindex="-1" role="dialog" aria-labelledby="modalInutilizacaoNfeGapLabel" aria-hidden="true">
+    <div class="modal fade document-fiscal-dialog" id="modalInutilizacaoNfeGap" tabindex="-1" role="dialog" aria-labelledby="modalInutilizacaoNfeGapLabel" aria-hidden="true">
         {{-- CENTRALIZAÇÃO VERTICAL --}}
         <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
             <form id="formInutilizarNumeracao"
@@ -802,7 +805,7 @@
         </div>
     </div>
     {{-- MODAL: Manual de utilização – Relatório de Gaps --}}
-    <div class="modal fade" id="modalManualNfeGaps" tabindex="-1" role="dialog" aria-labelledby="modalManualNfeGapsLabel" aria-hidden="true">
+    <div class="modal fade document-fiscal-dialog" id="modalManualNfeGaps" tabindex="-1" role="dialog" aria-labelledby="modalManualNfeGapsLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-info text-white">

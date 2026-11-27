@@ -1,6 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 @section('content')
-<div class="card card-custom">
+<div class="fer-extra fer-extra--ponto fer-extra--ponto_relogio card card-custom">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h3 class="card-title">{{ $title }}</h3>
         <a href="/ponto/relogios/new" class="btn btn-primary btn-sm">Novo Relógio</a>

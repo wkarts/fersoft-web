@@ -2,7 +2,8 @@
     window.hubSettings = {
         "position": "left",
         "type": "expanded_bubble",
-        "launcherTitle": "Suporte"
+        "launcherTitle": "Suporte",
+        "hideMessageBubble": false
     };
 
     (function(d, t) {

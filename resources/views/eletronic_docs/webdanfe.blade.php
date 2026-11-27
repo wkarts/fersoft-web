@@ -1,11 +1,14 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+@endpush
 
 @section('content')
-    <div class="container mt-4">
+    <div class="document-fiscal-page document-fiscal-page--eletronic-docs container mt-4">
         <h3 class="mb-4">Visualizar Documento Eletrônico</h3>
 
         <!-- Modal de Carregamento -->
-        <div id="loadingModal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
+        <div id="loadingModal" class="modal fade document-fiscal-dialog" tabindex="-1" role="dialog" aria-hidden="true">
             <div class="modal-dialog modal-sm modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-body text-center">

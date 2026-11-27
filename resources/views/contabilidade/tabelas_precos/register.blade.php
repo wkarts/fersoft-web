@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
 
-<div class="card card-custom gutter-b">
+<header class="fer-page__heading"><h1>Tabela de Preços</h1></header>
+<div class="fer-page fer-operational fer-form card card-custom gutter-b">
     <div class="card-header bg-white py-3">
         <h5 class="mb-0 text-dark font-weight-bold">
             <i class="fas fa-list text-primary mr-2"></i> {{ $title }}

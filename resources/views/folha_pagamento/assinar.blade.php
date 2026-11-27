@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Assinatura de Contracheque</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
     <style>
@@ -17,8 +17,9 @@
             touch-action: none;
         }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/ui-standalone-forms.css') }}?v={{ filemtime(public_path('css/ui-standalone-forms.css')) }}">
 </head>
-<body>
+<body class="fer-standalone-form fer-signature-form">
 <div class="container p-2">
     <div class="card card-recibo bg-white">
         <div class="card-header bg-primary text-white text-center py-3">

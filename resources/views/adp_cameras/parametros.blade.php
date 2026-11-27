@@ -1,4 +1,8 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 
 @section('content')
 <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -43,7 +47,7 @@
     }
 </style>
 
-<div class="container-fluid adp-camera-params-page">
+<div class="fer-extra fer-extra--people fer-extra--adp_cameras container-fluid adp-camera-params-page">
     <div class="page-head">
         <div>
             <h4>Parâmetros de Câmeras ADP</h4>

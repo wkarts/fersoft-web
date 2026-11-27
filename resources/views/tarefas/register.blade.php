@@ -1,12 +1,21 @@
 @extends('default.layout')
+@section('css')
+@unless(config('ui_theme.active', false))
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+@endunless
+@endsection
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+@endpush
 @section('content')
+<div class="ui-admin ui-admin-tarefas">
 <div class="container-fluid">
-    <div class="card shadow-sm mt-3">
-        <div class="card-header">
+    <div class="ui-admin-panel mt-3">
+        <div class="ui-admin-panel-head">
             <h4 class="mb-0">{{ $title }}</h4>
         </div>
         
-        <div class="card-body">
+        <div class="ui-admin-panel-body">
             <form action="{{ $data ? $actionUpdate . '/' . $data->id : $actionSave }}" method="POST">
                 @csrf
                 
@@ -133,4 +142,5 @@
         }
     }
 </script>
+</div>
 @endsection

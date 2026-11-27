@@ -1,5 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 @section('content')
+<header class="fer-page__heading"><h1>Painel Kanban - Delivery</h1></header>
 
 <style>
     .kanban-board { display: flex; overflow-x: auto; gap: 15px; padding-bottom: 20px; align-items: flex-start; }
@@ -10,7 +15,7 @@
     .kanban-actions { display: flex; justify-content: space-between; border-top: 1px solid #eee; padding-top: 8px; margin-top: 8px; }
 </style>
 
-<div class="content">
+<div class="content fer-page fer-board">
     <div class="container-fluid pt-4">
       <form action="/pedidosDelivery/kanban" method="GET" class="row mb-4">
               <div class="col-md-3">
@@ -24,7 +29,7 @@
               </div>
           </form>
         <h2>📦 Painel Kanban - Delivery</h2>
-        <div class="kanban-board">
+        <div class="kanban-board fer-results">
           
     @foreach([
         'novo' => ['🟡 Novos', '#ffc107', $pedidosNovo], 

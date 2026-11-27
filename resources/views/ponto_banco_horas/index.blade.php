@@ -1,6 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 @section('content')
-<div class="card card-custom mb-4"><div class="card-header"><h3 class="card-title">{{ $title }}</h3></div><div class="card-body">
+<div class="fer-extra fer-extra--ponto fer-extra--ponto_banco_horas card card-custom mb-4"><div class="card-header"><h3 class="card-title">{{ $title }}</h3></div><div class="card-body">
 <form method="post" action="/ponto/banco-horas/recalcular">@csrf
 <div class="row">
 <div class="col-md-4"><label>Funcionário</label><select class="form-control" name="funcionario_id" required>@foreach($funcionarios as $f)<option value="{{ $f->id }}">{{ $f->nome }}</option>@endforeach</select></div>

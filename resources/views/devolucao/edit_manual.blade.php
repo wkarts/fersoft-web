@@ -1,6 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
 
+<header class="fer-page__heading"><h1>Editando Tributação Devolução: {{$devolucao->id}}</h1></header>
 <div class="row" id="anime" style="display: none">
 	<div class="col s8 offset-s2">
 		<lottie-player src="/anime/{{\App\Models\Venda::randSuccess()}}" background="transparent" speed="0.8" style="width: 100%; height: 300px;" autoplay >
@@ -9,11 +13,11 @@
 </div>
 
 
-<div class="card card-custom gutter-b">
+<div class="fer-page fer-operational fer-form card card-custom gutter-b">
 
 	<div class="card-body @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">
 		<div class="content d-flex flex-column flex-column-fluid" id="kt_content" >
-			<div class="card card-custom gutter-b example example-compact">
+			<div class="fer-panel card card-custom gutter-b example example-compact">
 				<div class="col-lg-12">
 					<!--begin::Portlet-->
 

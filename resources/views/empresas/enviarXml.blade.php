@@ -1,14 +1,23 @@
 @extends('default.layout')
+@section('css')
+@unless(config('ui_theme.active', false))
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+@endunless
+@endsection
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+@endpush
 @section('content')
+<div class="ui-admin ui-admin-empresas">
 <div class=" d-flex flex-column flex-column-fluid" id="kt_content">
-	<div class="card card-custom gutter-b example example-compact">
+	<div class="ui-admin-panel gutter-b ">
 		<div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 			<div class="col-lg-12">
 				<br>
 				<form method="get" action="/empresas/filtroXml">
 
-					<div class="card card-custom gutter-b example example-compact">
-						<div class="card-header">
+					<div class="ui-admin-panel gutter-b ">
+						<div class="ui-admin-panel-head">
 
 							<h3 class="card-title">
 								ARQUIVOS XML DA EMPRESA <strong style="margin-left: 3px;" class="text-info">{{$empresa->nome}}</strong>
@@ -85,8 +94,8 @@
 				@if(isset($xml)&& sizeof($xml) > 0)
 				<div class="form-group col-lg-12 col-md-12 col-sm-12">
 
-					<div class="card card-custom gutter-b example example-compact">
-						<div class="card-header">
+					<div class="ui-admin-panel gutter-b ">
+						<div class="ui-admin-panel-head">
 							<div class="col-lg-4 col-md-4 col-sm-6">
 								<h3 class="card-title">Total de arquivos de NFe: <strong style="margin-left: 5px; color: blue">{{count($xml)}}</strong></h3>
 							</div>
@@ -100,7 +109,7 @@
 							</div>
 						</div>
 
-						<div class="card-body">
+						<div class="ui-admin-panel-body">
 							<div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded">
 
 								<table class="datatable-table" style="max-width: 100%; overflow: scroll">
@@ -147,8 +156,8 @@
 					@if(isset($xmlEntrada) && sizeof($xmlEntrada) > 0)
 					<div class="form-group col-lg-12 col-md-12 col-sm-12">
 
-						<div class="card card-custom gutter-b example example-compact">
-							<div class="card-header">
+						<div class="ui-admin-panel gutter-b ">
+							<div class="ui-admin-panel-head">
 								<div class="col-lg-4 col-md-4 col-sm-6">
 									<h3 class="card-title">Total de arquivos de NFe Entrada: <strong style="margin-left: 5px; color: blue">{{count($xmlEntrada)}}</strong></h3>
 								</div>
@@ -162,7 +171,7 @@
 								</div>
 							</div>
 
-							<div class="card-body">
+							<div class="ui-admin-panel-body">
 								<div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded">
 
 									<table class="datatable-table" style="max-width: 100%; overflow: scroll">
@@ -209,8 +218,8 @@
 						@if(isset($xmlDevolucao) && sizeof($xmlDevolucao) > 0)
 						<div class="form-group col-lg-12 col-md-12 col-sm-12">
 
-							<div class="card card-custom gutter-b example example-compact">
-								<div class="card-header">
+							<div class="ui-admin-panel gutter-b ">
+								<div class="ui-admin-panel-head">
 									<div class="col-lg-4 col-md-4 col-sm-6">
 										<h3 class="card-title">Total de arquivos de NFe Devolução: <strong style="margin-left: 5px; color: blue">{{count($xmlDevolucao)}}</strong></h3>
 									</div>
@@ -225,7 +234,7 @@
 									
 								</div>
 
-								<div class="card-body">
+								<div class="ui-admin-panel-body">
 									<div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded">
 
 										<table class="datatable-table" style="max-width: 100%; overflow: scroll">
@@ -273,8 +282,8 @@
 							<hr>
 							<div class="form-group col-lg-12 col-md-12 col-sm-12">
 
-								<div class="card card-custom gutter-b example example-compact">
-									<div class="card-header">
+								<div class="ui-admin-panel gutter-b ">
+									<div class="ui-admin-panel-head">
 										<div class="col-lg-4 col-md-4 col-sm-6">
 											<h3 class="card-title">Total de arquivos de NFCe: <strong style="margin-left: 5px; color: blue">{{count($xmlNfce)}}</strong></h3>
 										</div>
@@ -289,7 +298,7 @@
 										
 									</div>
 
-									<div class="card-body">
+									<div class="ui-admin-panel-body">
 										<div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded">
 
 											<table class="datatable-table" style="max-width: 100%; overflow: scroll">
@@ -341,8 +350,8 @@
 								<hr>
 								<div class="form-group col-lg-12 col-md-12 col-sm-12">
 
-									<div class="card card-custom gutter-b example example-compact">
-										<div class="card-header">
+									<div class="ui-admin-panel gutter-b ">
+										<div class="ui-admin-panel-head">
 											<div class="col-lg-4 col-md-4 col-sm-6">
 												<h3 class="card-title">Total de arquivos de CTe: <strong style="margin-left: 5px; color: blue">{{count($xmlCte)}}</strong></h3>
 											</div>
@@ -357,7 +366,7 @@
 											
 										</div>
 
-										<div class="card-body">
+										<div class="ui-admin-panel-body">
 											<div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded">
 
 												<table class="datatable-table" style="max-width: 100%; overflow: scroll">
@@ -399,8 +408,8 @@
 									<hr>
 									<div class="form-group col-lg-12 col-md-12 col-sm-12">
 
-										<div class="card card-custom gutter-b example example-compact">
-											<div class="card-header">
+										<div class="ui-admin-panel gutter-b ">
+											<div class="ui-admin-panel-head">
 												<div class="col-lg-4 col-md-4 col-sm-6">
 													<h3 class="card-title">Total de arquivos de MDFe: <strong style="margin-left: 5px; color: blue">{{count($xmlMdfe)}}</strong></h3>
 												</div>
@@ -415,7 +424,7 @@
 												
 											</div>
 
-											<div class="card-body">
+											<div class="ui-admin-panel-body">
 												<div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded">
 
 													<table class="datatable-table" style="max-width: 100%; overflow: scroll">
@@ -468,4 +477,5 @@
 		</div>
 
 
-		@endsection	
+		</div>
+@endsection	

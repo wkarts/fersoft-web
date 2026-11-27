@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
 
-<div class="card card-custom gutter-b">
+<header class="fer-page__heading"><h1>Filiais</h1></header>
+<div class="fer-page fer-operational fer-list card card-custom gutter-b">
 
 
 	<div class="card-body">
@@ -24,7 +28,7 @@
 
 				<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
 
-					<div class="wizard wizard-3" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
+					<div class="fer-results wizard wizard-3" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
 						
 
 						<div class="row">

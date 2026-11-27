@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 
 @section('content')
-    <div class="container">
+    <div class="fer-extra fer-extra--people fer-extra--traccar container">
         <h3>{{ $title }}</h3>
         @if(isset($error))
             <div class="alert alert-danger">

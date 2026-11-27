@@ -1,0 +1,128 @@
+/* Cadastros e configurações autenticados. Cores e medidas seguem a proposta
+   aprovada; o escopo não alcança as telas de impressão nem outros módulos. */
+body.ui-native-shell .ui-page .fer-catalog-config {
+  width: 100%;
+  min-width: 0;
+  color: var(--ui-ink, #182f36);
+  font-family: Poppins, system-ui, sans-serif;
+}
+body.ui-native-shell .ui-page .fer-catalog-config * { box-sizing: border-box; }
+body.ui-native-shell .ui-page .fer-catalog-config__heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 15px;
+  color: var(--ui-ink, #182f36);
+  font-size: clamp(18px, 2vw, 22px);
+  font-weight: 600;
+  line-height: 1.3;
+}
+body.ui-native-shell .ui-page .fer-catalog-config > :is(.container,.container-fluid) { max-width: none; padding: 0; }
+body.ui-native-shell .ui-page .fer-catalog-config #kt_content { min-width: 0; width: 100%; }
+body.ui-native-shell .ui-page .fer-catalog-config #kt_content > .card { width: 100%; }
+body.ui-native-shell .ui-page .fer-catalog-config .card {
+  border: 1px solid var(--ui-border, #dce7e7) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 5px 22px rgba(27,56,60,.045);
+  background: var(--ui-surface, #fff) !important;
+  min-width: 0;
+}
+body.ui-native-shell .ui-page .fer-catalog-config .card .card { box-shadow: none; }
+body.ui-native-shell .ui-page .fer-catalog-config .card-header {
+  min-height: 50px;
+  padding: 12px 18px;
+  background: var(--ui-surface-alt, #fafcfc) !important;
+  border-bottom: 1px solid var(--ui-border, #dce7e7);
+}
+body.ui-native-shell .ui-page .fer-catalog-config .card-header :is(h3,h4,h5,.card-title) { margin: 0; font-size: 14px; color: var(--ui-ink, #182f36) !important; }
+body.ui-native-shell .ui-page .fer-catalog-config .card-toolbar,
+body.ui-native-shell .ui-page .fer-catalog-config .card-header .btn-group { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
+body.ui-native-shell .ui-page .fer-catalog-config .card-toolbar .btn { margin: 0 !important; }
+body.ui-native-shell .ui-page .fer-catalog-config #kt_user_profile_aside { margin: 0 !important; min-width: 0; }
+body.ui-native-shell .ui-page .fer-catalog-config .card-body > br,
+body.ui-native-shell .ui-page .fer-catalog-config #kt_user_profile_aside > br { display: none; }
+body.ui-native-shell .ui-page .fer-catalog-config--list > .card > .card-body > div:first-child { margin-bottom: 14px; }
+body.ui-native-shell .ui-page .fer-catalog-config .card-body > :is(h4,h5) { margin: 0 0 10px; font-size: 15px; }
+body.ui-native-shell .ui-page .fer-catalog-config .card-body > label,
+body.ui-native-shell .ui-page .fer-catalog-config #kt_user_profile_aside > label { display: block; margin-bottom: 12px; color: var(--ui-muted, #62777d); font-size: 11px; }
+body.ui-native-shell .ui-page .fer-catalog-config .card-body > .row,
+body.ui-native-shell .ui-page .fer-catalog-config #kt_user_profile_aside > .row { row-gap: 12px; }
+body.ui-native-shell .ui-page .fer-catalog-config--list #kt_user_profile_aside > .row > [class*="col-"] > .card { height: 100%; margin: 0; }
+body.ui-native-shell .ui-page .fer-catalog-config--list #kt_user_profile_aside > .row > [class*="col-"] > .card > :is(.card-body,.card-header) { height: 100%; }
+body.ui-native-shell .ui-page .fer-catalog-config--list #kt_user_profile_aside .card-body h3 { font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; }
+body.ui-native-shell .ui-page .fer-catalog-config--list #kt_user_profile_aside .card-body p { margin: 8px 0; font-size: 11px; color: var(--ui-muted, #62777d); }
+body.ui-native-shell .ui-page .fer-catalog-config--list #kt_user_profile_aside .card-body p strong { color: var(--ui-ink, #182f36); font-weight: 600; }
+body.ui-native-shell .ui-page .fer-catalog-config--list #kt_user_profile_aside .card-toolbar { margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--ui-border, #dce7e7); }
+/* The inherited empty outer panels on edit forms should not nest a second card
+   around the existing title, fields and action bar. */
+body.ui-native-shell .ui-page .fer-catalog-config--form #kt_content > .card > .container,
+body.ui-native-shell .ui-page .fer-catalog-config--form > .card > .container { width: 100%; max-width: none; padding: 0 18px 16px; }
+body.ui-native-shell .ui-page .fer-catalog-config--form #kt_content > .card > .container > .col-lg-12,
+body.ui-native-shell .ui-page .fer-catalog-config--form > .card > .container > .col-lg-12 { max-width: none; padding: 0; }
+body.ui-native-shell .ui-page .fer-catalog-config--form form > .card:first-of-type { border: 0 !important; border-bottom: 1px solid var(--ui-border, #dce7e7) !important; border-radius: 0 !important; margin: 0 0 17px; }
+body.ui-native-shell .ui-page .fer-catalog-config--form form > .card:first-of-type > .card-header { padding: 15px 0; background: transparent !important; border: 0; }
+body.ui-native-shell .ui-page .fer-catalog-config--form .kt-section__body { min-width: 0; }
+body.ui-native-shell .ui-page .fer-catalog-config--form .card-footer > .row { justify-content: flex-end; gap: 9px 0; }
+body.ui-native-shell .ui-page .fer-catalog-config--form .card-footer > .row > .col-xl-2:first-child { display: none; }
+body.ui-native-shell .ui-page .fer-catalog-config--form .card-footer > .row > :empty { display: none; }
+body.ui-native-shell .ui-page .fer-catalog-config--form :is(.form-group,.input-field) { min-width: 0; }
+body.ui-native-shell .ui-page .fer-catalog-config :is(.form-group,.input-field) > label { display: block; margin-bottom: 5px; color: var(--ui-muted, #62777d); font-size: 11px; font-weight: 600; }
+body.ui-native-shell .ui-page .fer-catalog-config :is(.form-control,.custom-select,input.validate) { min-height: 38px; max-width: 100%; border: 1px solid var(--ui-border, #dce7e7); border-radius: 7px; background: var(--ui-surface, #fff); color: var(--ui-ink, #182f36); font: 400 11.5px Poppins, system-ui, sans-serif; }
+body.ui-native-shell .ui-page .fer-catalog-config :is(.form-control,.custom-select,input.validate):focus { border-color: var(--ui-accent, #1f9866); outline: 2px solid var(--ui-focus, #ccebd9); outline-offset: 0; }
+body.ui-native-shell .ui-page .fer-catalog-config :is(.switch,.checkbox,.radio) input[type="checkbox"],
+body.ui-native-shell .ui-page .fer-catalog-config :is(.switch,.checkbox,.radio) input[type="radio"] { position: static; display: inline-block; width: 16px; height: 16px; opacity: 1; appearance: auto; accent-color: var(--ui-accent, #1f9866); vertical-align: middle; }
+body.ui-native-shell .ui-page .fer-catalog-config .switch input + span { display: none; }
+body.ui-native-shell .ui-page .fer-catalog-config .switch > label { display: inline-flex; gap: 7px; align-items: center; }
+body.ui-native-shell .ui-page .fer-catalog-config .image-input { position: relative; display: inline-flex; align-items: flex-start; flex-wrap: wrap; gap: 7px; max-width: 100%; }
+body.ui-native-shell .ui-page .fer-catalog-config .image-input-wrapper { display: block; min-width: 95px; min-height: 95px; max-width: 100%; border: 1px solid var(--ui-border, #dce7e7); border-radius: 8px; background-position: center; background-repeat: no-repeat; background-size: contain; }
+body.ui-native-shell .ui-page .fer-catalog-config .image-input [data-action="change"] { position: relative; overflow: hidden; cursor: pointer; }
+body.ui-native-shell .ui-page .fer-catalog-config .image-input [data-action="change"] input[type="file"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+body.ui-native-shell .ui-page .fer-catalog-config .image-input [data-action="change"] input[type="hidden"] { display: none; }
+body.ui-native-shell .ui-page .fer-catalog-config :is(.table-responsive,.datatable,#kt_datatable) { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--ui-border, #dce7e7); border-radius: 8px; }
+body.ui-native-shell .ui-page .fer-catalog-config :is(.datatable-table,.table) { min-width: 570px; margin-bottom: 0; }
+body.ui-native-shell .ui-page .fer-catalog-config .datatable-table :is(td,th) { text-align: left; }
+body.ui-native-shell .ui-page .fer-catalog-config .datatable-table :is(td,th) > span { width: auto !important; min-width: 0; }
+body.ui-native-shell .ui-page .fer-catalog-config .datatable-table td form { display: inline-flex; gap: 5px; align-items: center; }
+body.ui-native-shell .ui-page .fer-catalog-config .datatable-table td :is(.btn,.btn-sm) { margin: 2px; }
+body.ui-native-shell .ui-page .fer-catalog-config .pagination { margin: 13px 0 0; }
+body.ui-native-shell .ui-page .fer-catalog-config .wizard-steps { padding: 0 12px !important; }
+body.ui-native-shell .ui-page .fer-catalog-config .wizard-title i { font-size: 15px !important; }
+body.ui-native-shell .ui-page .fer-catalog-config .alert { border: 1px solid var(--ui-border, #dce7e7); border-radius: 8px; }
+body.ui-native-shell .ui-page .fer-catalog-config .status-led,
+body.ui-native-shell .ui-page .fer-catalog-config .status-led-legenda { flex: 0 0 auto; border-color: var(--ui-border, #dce7e7); }
+body.ui-native-shell .ui-page .fer-catalog-config--typeServices .col.s12 { flex: 0 0 100%; max-width: 100%; }
+body.ui-native-shell .ui-page .fer-catalog-config--typeServices .input-field { flex: 0 0 100%; max-width: 100%; }
+body.ui-native-shell .ui-page .fer-catalog-config--typeServices input.validate { width: 100%; padding: 8px 11px; }
+body.ui-native-shell .ui-page .fer-catalog-config--typeServices .row > .btn { margin-left: 12px; }
+body.ui-native-shell .ui-page .fer-catalog-config--typeServices .alert:is(.blue,.green) { color: var(--ui-accent-hover, #15754f); background: var(--ui-accent-soft, #eaf5ef); }
+body.ui-native-shell .ui-page .fer-catalog-config--typeServices .alert.red { color: var(--ui-danger-text, #a53e4c); background: var(--ui-danger-bg, #fff5f5); }
+body.ui-native-shell .ui-page .fer-catalog-config--grupo_categorias .me-1 { margin-right: 4px !important; }
+body.ui-native-shell .ui-page .fer-catalog-config--grupo_categorias .me-2 { margin-right: 8px !important; }
+body.ui-native-shell .ui-page .fer-catalog-config--grupo_categorias .me-3 { margin-right: 12px !important; }
+body.ui-native-shell .ui-page .fer-catalog-config--grupo_categorias .ms-1 { margin-left: 4px !important; }
+body.ui-native-shell .ui-page .fer-catalog-config--grupo_categorias .gap-2 { gap: 8px; }
+body.ui-native-shell .ui-page .fer-catalog-config--grupo_categorias .fw-bold { font-weight: 600; }
+body.ui-native-shell .ui-page .fer-catalog-config--grupo_categorias .text-end { text-align: right; }
+body.ui-native-shell .ui-page .fer-catalog-config--grupo_categorias .form-select { display: block; width: 100%; min-height: 38px; padding: 8px 11px; border: 1px solid var(--ui-border, #dce7e7); border-radius: 7px; background: var(--ui-surface, #fff); color: var(--ui-ink, #182f36); }
+body.ui-native-shell .ui-page .fer-catalog-config--grupo_categorias .card-header.bg-primary { color: var(--ui-ink, #182f36) !important; }
+body.ui-native-shell .ui-page .fer-catalog-config--grupo_categorias .row.g-2,
+body.ui-native-shell .ui-page .fer-catalog-config--grupo_categorias .row.g-3 { row-gap: 9px; }
+body.ui-native-shell .ui-page .fer-catalog-config--grupo_categorias .form-check.card { display: flex; align-items: flex-start; flex-direction: row; gap: 7px; padding: 10px !important; }
+body.ui-native-shell .ui-page .fer-catalog-config--grupo_categorias .form-check.card .form-check-input { position: static; flex: 0 0 16px; width: 16px; height: 16px; margin: 2px 0 0 !important; accent-color: var(--ui-accent, #1f9866); }
+body.ui-native-shell .ui-page .fer-catalog-config--grupo_categorias .form-check.card .form-check-label { flex: 1 1 auto; min-width: 0; color: var(--ui-ink, #182f36); }
+body.ui-native-shell .fer-catalog-config .modal-content { color: var(--ui-ink, #182f36); border-color: var(--ui-border, #dce7e7); }
+body.ui-native-shell .fer-catalog-config .modal-header { background: var(--ui-surface-alt, #fafcfc) !important; color: var(--ui-ink, #182f36) !important; }
+body.ui-native-shell .fer-catalog-config .modal-header .modal-title { color: var(--ui-ink, #182f36) !important; }
+body.ui-native-shell .fer-catalog-config .modal-body { max-height: 72dvh; overflow-y: auto; }
+body.ui-native-shell .fer-catalog-config .modal-footer { background: var(--ui-surface-alt, #fafcfc); }
+@media (max-width: 767px) {
+  body.ui-native-shell .ui-page .fer-catalog-config__heading { font-size: 18px; margin-bottom: 12px; }
+  body.ui-native-shell .ui-page .fer-catalog-config :is(.card-body,.modal-body) { padding: 13px; }
+  body.ui-native-shell .ui-page .fer-catalog-config--form #kt_content > .card > .container,
+  body.ui-native-shell .ui-page .fer-catalog-config--form > .card > .container { padding: 0 13px 13px; }
+  body.ui-native-shell .ui-page .fer-catalog-config .row > [class*="col-"] { min-width: 0; }
+  body.ui-native-shell .ui-page .fer-catalog-config--form .card-footer > .row > [class*="col-"] { flex: 1 1 100%; max-width: none; }
+  body.ui-native-shell .ui-page .fer-catalog-config--form .card-footer .btn { width: 100%; }
+  body.ui-native-shell .ui-page .fer-catalog-config--list #kt_user_profile_aside > .row > [class*="col-"] { flex-basis: 100%; max-width: 100%; }
+  body.ui-native-shell .fer-catalog-config .modal-dialog { max-width: calc(100vw - 16px); margin: 8px auto; }
+}

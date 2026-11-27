@@ -1,4 +1,8 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 @section('content')
     <style>
         .pdv-container { display: flex; flex-wrap: wrap; margin: -10px; }
@@ -45,7 +49,7 @@
         @media(max-width: 1200px) { .pdv-left, .pdv-right { flex: 0 0 100%; max-width: 100%; } }
     </style>
 
-    <div class="pdv-container">
+    <div class="fer-page fer-operational fer-form pdv-container">
         <!-- ESQUERDA: FORMULÁRIO DE OPERAÇÃO -->
         <div class="pdv-left">
             <div class="pdv-panel border-top border-primary border-3">

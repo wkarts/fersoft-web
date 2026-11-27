@@ -1,7 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+@endpush
 
 @section('content')
-    <div class="nfe-inutilizacoes-report">
+    <div class="document-fiscal-page document-fiscal-page--relatorios nfe-inutilizacoes-report">
         @php
             // Ambiente fiscal auto detectado (mesmo padrão da tela de Gaps)
             $ambienteNFeCode = null;
@@ -464,7 +467,7 @@
     </div>
 
     {{-- MODAL: Manual de utilização (já existia, mantido) --}}
-    <div class="modal fade" id="modalManualInutilizacoes" tabindex="-1" role="dialog" aria-labelledby="modalManualInutilizacoesLabel" aria-hidden="true">
+    <div class="modal fade document-fiscal-dialog" id="modalManualInutilizacoes" tabindex="-1" role="dialog" aria-labelledby="modalManualInutilizacoesLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-info text-white">
@@ -507,7 +510,7 @@
     </div>
 
     {{-- MODAL: Inutilização Manual --}}
-    <div class="modal fade" id="modalInutilizacaoManual" tabindex="-1" role="dialog" aria-labelledby="modalInutilizacaoManualLabel" aria-hidden="true">
+    <div class="modal fade document-fiscal-dialog" id="modalInutilizacaoManual" tabindex="-1" role="dialog" aria-labelledby="modalInutilizacaoManualLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
             <form id="formInutilizacaoManual"
                   method="POST"
@@ -650,7 +653,7 @@
     {{-- ========================= --}}
 
     <!-- Modal Reutilizável de Confirmação -->
-    <div class="modal fade" id="modalConfirmacao" tabindex="-1" role="dialog" aria-labelledby="modalConfirmacaoLabel" aria-hidden="true">
+    <div class="modal fade document-fiscal-dialog" id="modalConfirmacao" tabindex="-1" role="dialog" aria-labelledby="modalConfirmacaoLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
                 <div class="modal-header">
@@ -671,7 +674,7 @@
     </div>
 
     <!-- Modal Reutilizável para Alertas e Mensagens -->
-    <div class="modal fade" id="modalMensagem" tabindex="-1" role="dialog" aria-labelledby="modalMensagemLabel" aria-hidden="true">
+    <div class="modal fade document-fiscal-dialog" id="modalMensagem" tabindex="-1" role="dialog" aria-labelledby="modalMensagemLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
                 <div class="modal-header">

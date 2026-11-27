@@ -1,8 +1,12 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
 
-    <div class="d-flex flex-column flex-column-fluid" id="kt_content">
-        <div class="card card-custom gutter-b">
+    <header class="fer-page__heading"><h1>Histórico de Veículos</h1></header>
+<div class="d-flex flex-column flex-column-fluid" id="kt_content">
+        <div class="fer-page fer-operational fer-detail card card-custom gutter-b">
 
             <!-- CABEÇALHO -->
             <div class="card-header bg-light">

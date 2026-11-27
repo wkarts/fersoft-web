@@ -1,8 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
 <div class="container-fluid">
-    <div class="no-print">
-        <div class="row pt-3 mb-2">
+    <div class="no-print fer-operational fer-board fer-screen">
+        <div class="row pt-3 mb-2 fer-page__heading">
             <div class="col-12 d-flex justify-content-between align-items-center">
                 <h2 class="text-dark font-weight-bold"><i class="fas fa-chart-line text-info"></i> Painel de Faturamento</h2>
                 <a href="{{ url('faturamento/pdf') }}?tipo_periodo={{ request('tipo_periodo', 'anual') }}&ano={{ request('ano', date('Y')) }}&filial_id={{ request('filial_id') }}" target="_blank" class="btn btn-primary shadow-sm font-weight-bold">
@@ -40,7 +43,7 @@
 
         <div class="card shadow border-0 mb-4">
             <div class="card-body">
-                <form action="{{ url('/faturamento') }}" method="GET" class="row mb-4 border-bottom pb-3">
+                <form action="{{ url('/faturamento') }}" method="GET" class="row mb-4 border-bottom pb-3 fer-filter">
                     <div class="col-md-3">
                         <label class="small font-weight-bold text-muted">PERÍODO</label>
                         <select name="tipo_periodo" class="form-control form-control-sm" onchange="this.form.submit()">

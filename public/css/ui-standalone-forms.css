@@ -1,0 +1,213 @@
+/* Formulários operacionais públicos: escopo isolado do ERP, PDV e impressões. */
+body.fer-standalone-form {
+    --fer-surface: #fff; --fer-text: #213b45; --fer-muted: #526a70;
+    --fer-border: #dce7e4; --fer-green: #1f9866; --fer-green-hover: #17774f;
+    min-height: 100vh; color: var(--fer-text); background: #f5f7f7;
+    font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+}
+body.fer-standalone-form :is(input, select, textarea, button, a):focus-visible,
+body.fer-standalone-form .radio-option:focus-within {
+    outline: 3px solid rgba(31, 152, 102, .42); outline-offset: 2px;
+}
+body.fer-standalone-form :is(.form-control, .form-select) {
+    min-height: 44px; color: var(--fer-text); background-color: #fff;
+    border: 1px solid var(--fer-border); border-radius: 8px; font-size: 15px;
+}
+body.fer-standalone-form :is(.form-control, .form-select):focus {
+    border-color: var(--fer-green); box-shadow: 0 0 0 3px rgba(31,152,102,.14);
+}
+body.fer-standalone-form textarea.form-control { min-height: 92px; }
+body.fer-standalone-form input[type="file"].form-control { height: auto; }
+body.fer-standalone-form :is(.btn-primary, .btn-success, .btn-enviar, .btn-acessar) {
+    color: #fff; background: var(--fer-green); border-color: var(--fer-green);
+    border-radius: 8px; font-weight: 600;
+}
+body.fer-standalone-form :is(.btn-primary, .btn-success, .btn-enviar, .btn-acessar):is(:hover,:focus) {
+    color: #fff; background: var(--fer-green-hover); border-color: var(--fer-green-hover);
+}
+body.fer-standalone-form :is(.form-label, .form-group > label) {
+    color: var(--fer-muted); font-size: 13px; font-weight: 600;
+}
+body.fer-standalone-form :is(.alert, .card) { border-radius: 12px; }
+
+/* Abastecimento: câmera, campos e submissão permanecem intactos. */
+body.fer-fuel-form .custom-file { min-height: 44px; }
+body.fer-fuel-form .custom-file-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Checklist público e seleção por teclado. */
+body.fer-checklist-form .main-header {
+    color: var(--fer-text); background: #fff; border-bottom: 1px solid var(--fer-border);
+    border-radius: 0; box-shadow: none;
+}
+body.fer-checklist-form .main-header h4 { font-size: clamp(18px,3vw,22px); }
+body.fer-checklist-form .main-header h4 i { color: var(--fer-green); }
+body.fer-checklist-form .main-header .badge { color: var(--fer-green) !important; background: #e8f5ee; }
+body.fer-checklist-form .card-custom {
+    overflow: hidden; border: 1px solid var(--fer-border);
+    box-shadow: 0 4px 18px rgba(33,59,69,.045);
+}
+body.fer-checklist-form .section-title { color: var(--fer-text); border-left-color: var(--fer-green); }
+body.fer-checklist-form .item-box { background: #fafcfb; border-color: var(--fer-border); }
+body.fer-checklist-form .item-title { color: var(--fer-text); line-height: 1.45; }
+body.fer-checklist-form .item-title i { color: var(--fer-green); }
+body.fer-checklist-form .radio-option {
+    position: relative; display: flex; align-items: center; justify-content: center;
+    min-height: 44px; line-height: 1.3; border-color: var(--fer-border); border-radius: 8px;
+}
+body.fer-checklist-form .radio-option.active-ok { color: #176a47; background: #e8f5ee; border-color: #79caa5; }
+body.fer-checklist-form .radio-option.active-bad { color: #9c2835; background: #fff1f2; border-color: #ec9aa5; }
+body.fer-checklist-form .form-control-file { display: block; width: 100%; border-color: var(--fer-border) !important; }
+body.fer-checklist-form .form-control-file::file-selector-button {
+    margin-right: 10px; padding: 6px 10px; color: var(--fer-text);
+    background: #e8f5ee; border: 0; border-radius: 6px;
+}
+
+/* Assinatura de holerite. */
+body.fer-signature-form .card-recibo {
+    overflow: hidden; border: 1px solid var(--fer-border);
+    box-shadow: 0 4px 18px rgba(33,59,69,.06);
+}
+body.fer-signature-form .card-header {
+    color: var(--fer-text) !important; background: #fff !important;
+    border-bottom: 1px solid var(--fer-border);
+}
+body.fer-signature-form .card-header small { display: block; margin-top: 4px; color: var(--fer-muted); }
+body.fer-signature-form .alert-info { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+body.fer-signature-form .alert-info .float-right { float: none !important; margin-left: auto; white-space: nowrap; }
+body.fer-signature-form #canvasAssinatura { display: block; max-width: 100%; border-color: #93cdb2; }
+body.fer-signature-form #formAssinatura > .d-flex { flex-wrap: wrap; gap: 8px; }
+
+/* Pré-cadastro do parceiro. */
+body.fer-partner-form > .container { width: min(100% - 24px, 920px); max-width: 920px !important; }
+body.fer-partner-form .form-container {
+    margin-top: 0; padding: clamp(18px,4vw,36px); border: 1px solid var(--fer-border);
+    border-radius: 14px; box-shadow: 0 4px 18px rgba(33,59,69,.045);
+}
+body.fer-partner-form .form-container .row { --bs-gutter-x: 20px; --bs-gutter-y: 0; }
+body.fer-partner-form .form-container .row > [class*="col-"] { min-width: 0; margin-bottom: 16px; }
+body.fer-partner-form .form-label { display: block; margin: 0 0 7px; line-height: 1.4; }
+body.fer-partner-form .form-check-inline {
+    margin: 0 8px 6px 0; padding: 8px 14px 8px 35px; background: #fafcfb;
+    border: 1px solid var(--fer-border); border-radius: 8px;
+}
+body.fer-partner-form .form-check-input:checked { background-color: var(--fer-green); border-color: var(--fer-green); }
+body.fer-partner-form .form-check-label { cursor: pointer; }
+body.fer-partner-form .form-container h5 { color: var(--fer-text) !important; font-size: 17px; font-weight: 650; }
+body.fer-partner-form .form-container hr { margin-top: 12px !important; border-color: var(--fer-border); opacity: 1; }
+body.fer-partner-form #btn-submit { min-height: 44px; }
+
+/* Portal do cliente: acesso, recuperação e painel. */
+body.fer-portal-access {
+    height: auto; min-height: 100vh; min-height: 100dvh; padding: 20px 12px;
+}
+body.fer-portal-access .login-box {
+    max-width: 430px; padding: clamp(20px,5vw,36px); border: 1px solid var(--fer-border);
+    border-radius: 14px; box-shadow: 0 4px 18px rgba(33,59,69,.06);
+}
+body.fer-portal-access .login-box img { max-width: 100%; object-fit: contain; }
+body.fer-portal-access .login-box h4 { font-size: 20px; }
+body.fer-portal-access :is(.btn, .btn-acessar) { min-height: 44px; }
+body.fer-portal-panel .header-portal {
+    padding: 18px 0; color: var(--fer-text); background: #fff;
+    border-bottom: 1px solid var(--fer-border); box-shadow: none;
+}
+body.fer-portal-panel .header-portal .btn-sair {
+    color: var(--fer-green); background: #e8f5ee; border-color: #c8e6d7;
+}
+body.fer-portal-panel .header-portal .btn-sair:hover { color: #fff; background: var(--fer-green-hover); }
+body.fer-portal-panel .card-custom {
+    padding: clamp(16px,3vw,25px); border: 1px solid var(--fer-border);
+    box-shadow: 0 4px 18px rgba(33,59,69,.045);
+}
+body.fer-portal-panel .card-title-custom { color: var(--fer-text); border-color: var(--fer-border); }
+body.fer-portal-panel .card-title-custom i { color: var(--fer-green); }
+body.fer-portal-panel #box_portaria { background: #f3f9f5 !important; border: 1px solid var(--fer-border) !important; }
+body.fer-portal-panel .table-custom th { white-space: nowrap; }
+body.fer-portal-panel .table-custom td { vertical-align: middle; }
+
+/* Resposta da cotação recebida por fornecedor. */
+body.fer-quote-response .navbar { min-height: 72px; border-bottom: 1px solid var(--fer-border); box-shadow: none !important; }
+body.fer-quote-response .navbar-brand { max-width: 100%; white-space: normal; }
+body.fer-quote-response .navbar-brand img { max-width: min(120px, 100%); height: auto; }
+body.fer-quote-response main > .container { max-width: 1180px; }
+body.fer-quote-response main form { padding: 0; }
+body.fer-quote-response main h3 { margin-bottom: 22px; color: var(--fer-text); font-size: clamp(20px,3vw,27px); }
+body.fer-quote-response main .row h5 { font-size: 14px; line-height: 1.55; }
+body.fer-quote-response .card { overflow: hidden; border: 1px solid var(--fer-border); box-shadow: 0 4px 18px rgba(33,59,69,.045); }
+body.fer-quote-response .card-header { padding: 16px 20px; background: #fff; border-bottom-color: var(--fer-border); }
+body.fer-quote-response .card-header h5 { margin: 0; color: var(--fer-text); }
+body.fer-quote-response .table { min-width: 700px; vertical-align: middle; }
+body.fer-quote-response .table th { color: var(--fer-muted); background: #f8fbf9; font-size: 12px; }
+body.fer-quote-response .table td { min-width: 125px; }
+body.fer-quote-response .table td:first-child { min-width: 180px; }
+body.fer-quote-response .table td .form-control { min-width: 0; }
+body.fer-quote-response .table td .form-control:disabled { color: var(--fer-text); background: #f5f7f7; }
+body.fer-quote-response .total { color: var(--fer-green-hover); }
+
+/* Ficha de atendimento Materialize: classes e scripts originais preservados. */
+body.fer-not-found-form nav { height: 8px; line-height: 8px; background: var(--fer-green) !important; box-shadow: none; }
+body.fer-not-found-form form.container {
+    width: min(100% - 24px, 780px); margin: 28px auto;
+    padding: clamp(18px,4vw,32px); background: #fff; border: 1px solid var(--fer-border);
+    border-radius: 14px; box-shadow: 0 4px 18px rgba(33,59,69,.045);
+}
+body.fer-not-found-form form.container > h5 {
+    margin: 0 0 20px; color: var(--fer-text); font-size: clamp(17px,2.5vw,21px); line-height: 1.4;
+}
+body.fer-not-found-form .input-field { min-width: 0; }
+body.fer-not-found-form .input-field input:focus {
+    border-bottom-color: var(--fer-green) !important; box-shadow: 0 1px 0 var(--fer-green) !important;
+}
+body.fer-not-found-form .input-field input:focus + label { color: var(--fer-green) !important; }
+body.fer-not-found-form button.btn-large { width: 100%; background: var(--fer-green); border-radius: 8px; box-shadow: none; }
+body.fer-not-found-form button.btn-large:hover { background: var(--fer-green-hover); }
+
+@media (max-width: 700px) {
+    body.fer-checklist-form .options-container { gap: 8px; }
+    body.fer-checklist-form .radio-option { padding: 8px 5px; font-size: 13px; }
+    body.fer-partner-form > .container { margin-top: 18px !important; }
+    body.fer-partner-form .form-container .row { --bs-gutter-x: 16px; }
+    body.fer-portal-panel .header-portal .container > .d-flex { min-width: 0; }
+    body.fer-portal-panel .header-portal .container > .d-flex:nth-child(2) { width: 100%; justify-content: space-between; }
+    body.fer-portal-panel .header-portal strong { overflow-wrap: anywhere; }
+    body.fer-portal-panel .table-custom thead { display: none; }
+    body.fer-portal-panel .table-custom tbody,
+    body.fer-portal-panel .table-custom tr { display: block; }
+    body.fer-portal-panel .table-custom tr {
+        margin-bottom: 12px; padding: 8px 12px;
+        border: 1px solid var(--fer-border); border-radius: 10px;
+    }
+    body.fer-portal-panel .table-custom td {
+        display: flex; justify-content: space-between; align-items: flex-start;
+        gap: 12px; padding: 8px 0; border: 0; text-align: right !important;
+        overflow-wrap: anywhere;
+    }
+    body.fer-portal-panel .table-custom td::before {
+        content: attr(data-label); flex: none; color: var(--fer-muted); font-size: 12px;
+        font-weight: 600; text-align: left;
+    }
+    body.fer-portal-panel .table-custom td[colspan] {
+        display: block; text-align: center !important;
+    }
+    body.fer-portal-panel .table-custom td[colspan]::before { content: none; }
+    body.fer-quote-response .card-body { padding: 14px; }
+    body.fer-quote-response .table { min-width: 0; }
+    body.fer-quote-response .table thead { display: none; }
+    body.fer-quote-response .table tbody, body.fer-quote-response .table tr { display: block; }
+    body.fer-quote-response .table tr {
+        margin-bottom: 14px; padding: 8px 12px; border: 1px solid var(--fer-border); border-radius: 10px;
+    }
+    body.fer-quote-response .table td {
+        display: grid; grid-template-columns: minmax(0,1fr); gap: 4px;
+        min-width: 0 !important; padding: 7px 0; border: 0;
+    }
+    body.fer-quote-response .table td::before { content: attr(data-label); color: var(--fer-muted); font-size: 12px; font-weight: 650; }
+    body.fer-quote-response .card-body > .row.mt-3 .btn { width: 100%; }
+}
+@media (max-width: 400px) {
+    body.fer-checklist-form .item-box { padding: 10px; }
+    body.fer-signature-form .card-body { padding: 14px; }
+    body.fer-portal-access .login-box { padding: 22px 18px; }
+    body.fer-portal-panel .header-portal { margin-bottom: 20px; }
+    body.fer-portal-panel .header-logo { max-width: 80px; }
+}

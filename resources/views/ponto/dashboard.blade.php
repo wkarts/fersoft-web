@@ -3,9 +3,13 @@
 @endphp
 
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 
 @section('content')
-    <div class="container-fluid p-0">
+    <div class="fer-extra fer-extra--ponto container-fluid p-0">
 
         <div class="d-flex justify-content-end mb-4">
             <button type="button" class="btn btn-warning font-weight-bold shadow-sm" data-toggle="modal" data-target="#modalLancarFerias">
@@ -204,7 +208,7 @@
         </div>
 
         <!-- MODAL LANÇAR FÉRIAS -->
-        <div class="modal fade" id="modalLancarFerias" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal fer-extra-modal fade" id="modalLancarFerias" tabindex="-1" role="dialog" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered" role="document">
                 <div class="modal-content">
                     <form method="POST" action="{{ url('/ponto/ferias/salvar') }}">

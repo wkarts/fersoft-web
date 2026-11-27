@@ -6,6 +6,7 @@
     <title>Cadastro de Parceiro - {{ $config->nome_fantasia ?? 'Sistema' }}</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body {
             background-color: #f3f4f6; /* Fundo cinza claro */
@@ -44,8 +45,9 @@
             color: white;
         }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/ui-standalone-forms.css') }}?v={{ filemtime(public_path('css/ui-standalone-forms.css')) }}">
 </head>
-<body>
+<body class="fer-standalone-form fer-partner-form">
 
 <div class="container" style="max-width: 800px; margin-top: 50px;">
     
@@ -112,12 +114,12 @@
                     <label class="form-label">5. Optante pelo Simples Nacional? *</label>
                     <div>
                         <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="simples_nacional" value="1" required>
-                            <label class="form-check-label">Sim</label>
+                            <input class="form-check-input" type="radio" name="simples_nacional" id="simples-sim" value="1" required>
+                            <label class="form-check-label" for="simples-sim">Sim</label>
                         </div>
                         <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="simples_nacional" value="0">
-                            <label class="form-check-label">Não</label>
+                            <input class="form-check-input" type="radio" name="simples_nacional" id="simples-nao" value="0">
+                            <label class="form-check-label" for="simples-nao">Não</label>
                         </div>
                     </div>
                 </div>
@@ -198,12 +200,12 @@
                     <label class="form-label">21. Tipo de Conta</label>
                     <div>
                         <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="tipo_conta" value="Corrente">
-                            <label class="form-check-label">Corrente</label>
+                            <input class="form-check-input" type="radio" name="tipo_conta" id="conta-corrente" value="Corrente">
+                            <label class="form-check-label" for="conta-corrente">Corrente</label>
                         </div>
                         <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="tipo_conta" value="Poupanca">
-                            <label class="form-check-label">Poupança</label>
+                            <input class="form-check-input" type="radio" name="tipo_conta" id="conta-poupanca" value="Poupanca">
+                            <label class="form-check-label" for="conta-poupanca">Poupança</label>
                         </div>
                     </div>
                 </div>

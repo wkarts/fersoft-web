@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
-    <div class=" d-flex flex-column flex-column-fluid" id="kt_content">
-        <div class="card card-custom gutter-b example example-compact">
+<header class="fer-page__heading"><h1>{{ isset($forn) ? 'Editar' : 'Novo' }} Fornecedor</h1></header>
+    <div class="fer-page fer-form ui-contact-register d-flex flex-column flex-column-fluid" id="kt_content">
+        <div class="card card-custom gutter-b example example-compact fer-panel">
             <div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
                 <div class="col-lg-12">
                     <br>
@@ -11,13 +15,7 @@
                             <input type="hidden" name="_save_token" value="{{ session('fornecedor_save_token') }}">
                         @endif
                         <input type="hidden" name="id" value="{{{ isset($forn) ? $forn->id : 0 }}}">
-                        <div class="card card-custom gutter-b example example-compact">
-                            <div class="card-header">
-
-                                <h3 class="card-title">{{isset($forn) ? 'Editar' : 'Novo'}} Fornecedor</h3>
-                            </div>
-
-                        </div>
+                        
                         @csrf
 
                         <div class="row">
@@ -67,8 +65,7 @@
                                                 </div>
                                             </div>
 
-                                            <div class="form-group validated col-lg-1 col-md-2 col-sm-6">
-                                                <br><br>
+                                            <div class="form-group validated col-lg-1 col-md-2 col-sm-6 ui-contact-lookup">
                                                 <a type="button" id="btn-consulta-cadastro" onclick="consultaCadastro()" class="btn btn-success spinner-white spinner-right">
 												<span>
 													<i class="fa fa-search"></i>

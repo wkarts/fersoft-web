@@ -1,10 +1,13 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-operations.css') }}?v={{ filemtime(public_path('css/ui-operations.css')) }}">
+@endpush
 @section('content')
-<div class="container-fluid">
+<div class="container-fluid operations-page operations-page--stock">
     
     {{-- CABEÇALHO E BOTÕES DE AÇÃO --}}
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="m-0 text-dark fw-bold">{{ $title }}</h2>
+        <h2 class="m-0 text-dark fw-bold operations-page__title">{{ $title }}</h2>
         
         <div class="btn-group shadow-sm">
             <a href="{{ route('estoque.index', array_merge(request()->query(), ['export' => 'pdf'])) }}" class="btn btn-danger" title="Exportar para PDF">
@@ -23,7 +26,7 @@
     </div>
 
     {{-- FILTROS DE BUSCA MELHORADOS --}}
-    <div class="card shadow-sm mb-4">
+    <div class="card operations-panel shadow-sm mb-4 operations-filters">
         <div class="card-body pb-0"> {{-- pb-0 tira o excesso de margem embaixo --}}
             <form action="{{ route('estoque.index') }}" method="GET">
                 <div class="row align-items-end">
@@ -71,7 +74,7 @@
     {{-- CARDS TOTALIZADORES GERAIS --}}
     <div class="row mb-4">
         <div class="col-md-3">
-            <div class="card bg-success text-white shadow-sm h-100">
+            <div class="card operations-metric bg-success text-white shadow-sm h-100">
                 <div class="card-body text-center d-flex flex-column justify-content-center">
                     <h6 class="card-title text-uppercase mb-1">Entradas no Período</h6>
                     <h3 class="m-0 fw-bold">{{ number_format($totais['entradas_kg'] ?? 0, 2, ',', '.') }} <small class="fs-6">KG</small></h3>
@@ -79,7 +82,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card bg-danger text-white shadow-sm h-100">
+            <div class="card operations-metric bg-danger text-white shadow-sm h-100">
                 <div class="card-body text-center d-flex flex-column justify-content-center">
                     <h6 class="card-title text-uppercase mb-1">Saídas no Período</h6>
                     <h3 class="m-0 fw-bold">{{ number_format($totais['saidas_kg'] ?? 0, 2, ',', '.') }} <small class="fs-6">KG</small></h3>
@@ -87,7 +90,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card bg-primary text-white shadow-sm h-100">
+            <div class="card operations-metric bg-primary text-white shadow-sm h-100">
                 <div class="card-body text-center d-flex flex-column justify-content-center">
                     <h6 class="card-title text-uppercase mb-1">Saldo Atual (Físico)</h6>
                     <h3 class="m-0 fw-bold">{{ number_format($totais['saldo_kg'] ?? 0, 2, ',', '.') }} <small class="fs-6">KG</small></h3>
@@ -95,7 +98,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card bg-dark text-white shadow-sm h-100">
+            <div class="card operations-metric bg-dark text-white shadow-sm h-100">
                 <div class="card-body text-center d-flex flex-column justify-content-center">
                     <h6 class="card-title text-uppercase mb-1">Valor do Estoque Atual</h6>
                     <h3 class="m-0 fw-bold"><small class="fs-6">R$</small> {{ number_format($totais['valor_patrimonio'] ?? 0, 2, ',', '.') }}</h3>
@@ -120,7 +123,7 @@
     {{-- CONTEÚDO DAS ABAS --}}
     <div id="conteudo-sintetico" style="display: block;">
         {{-- TABELA SINTÉTICA --}}
-        <div class="card shadow-sm">
+        <div class="card operations-panel shadow-sm">
             <div class="card-body p-0 table-responsive">
                 <table class="table table-hover table-striped table-bordered m-0 align-middle">
                     <thead class="table-dark text-center">
@@ -158,7 +161,7 @@
 
     <div id="conteudo-analitico" style="display: none;">
         {{-- TABELA ANALÍTICA --}}
-        <div class="card shadow-sm">
+        <div class="card operations-panel shadow-sm">
             <div class="card-body p-0 table-responsive">
                 <table class="table table-hover table-striped m-0 align-middle" style="font-size: 0.9rem;">
                     <thead class="table-dark text-center">
@@ -225,7 +228,7 @@
     </div>
   	{{-- ABA POR FORNECEDOR / CLIENTE --}}
     <div id="conteudo-fornecedores" style="display: none;">
-        <div class="card shadow-sm">
+        <div class="card operations-panel shadow-sm">
             <div class="card-body p-0 table-responsive">
                 <table class="table table-hover m-0 align-middle">
                     <thead class="table-dark text-center">

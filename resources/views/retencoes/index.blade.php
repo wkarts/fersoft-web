@@ -1,4 +1,7 @@
 @extends('default.layout', ['title' => 'Retenções'])
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+@endpush
 @section('content')
 
 <style>
@@ -6,7 +9,7 @@
     .select2-container { width: 100% !important; }
 </style>
 
-<div class="card card-custom gutter-b">
+<div class="document-fiscal-page document-fiscal-page--retencoes card card-custom gutter-b">
     <div class="card-body">
         <div class="" style="margin-left: 10px; margin-right: 10px;">
 

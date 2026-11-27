@@ -3,6 +3,7 @@
 <head>
     @include('layouts.installable')
   <title>ACESSO - {{ env("APP_NAME") }}</title>
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
@@ -12,8 +13,11 @@
 
   <link rel="stylesheet" href="/login3/css/style.css">
 
+    @if(config('ui_theme.active', false))
+    <link rel="stylesheet" href="{{ asset('css/ui-auth.css') }}?v={{ filemtime(public_path('css/ui-auth.css')) }}">
+    @endif
 </head>
-<body>
+<body class="@if(config('ui_theme.active', false)) fer-auth fer-auth--login @endif">
   <section class="ftco-section">
     <div class="container">
 

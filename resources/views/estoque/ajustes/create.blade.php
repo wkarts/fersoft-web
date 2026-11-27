@@ -1,4 +1,7 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-operations.css') }}?v={{ filemtime(public_path('css/ui-operations.css')) }}">
+@endpush
 @section('content')
 <style type="text/css">
 	#focus-codigo:hover { cursor: pointer; }
@@ -30,12 +33,12 @@
 	}
 </style>
 
-<div class="card card-custom gutter-b">
+<div class="operations-page operations-page--stock-detail">
     <div class="card-header">
-        <h3 class="card-title">Novo Apontamento / Ajuste Múltiplo</h3>
+        <h3 class="card-title operations-page__title">Novo Apontamento / Ajuste Múltiplo</h3>
     </div>
     
-    <div class="card-body">
+    <div class="operations-page__content card-body">
         <form method="post" action="/estoque/ajustes" id="form-ajuste">
             @csrf
             

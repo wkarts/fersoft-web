@@ -1,73 +1,65 @@
 @extends('default.layout')
+@section('css')
+@unless(config('ui_theme.active', false))
+<link rel="stylesheet" href="{{ asset('css/ui-people.css') }}?v={{ filemtime(public_path('css/ui-people.css')) }}">
+@endunless
+@endsection
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-people.css') }}?v={{ filemtime(public_path('css/ui-people.css')) }}">
+@endpush
 @section('content')
-
-<div class="card card-custom gutter-b">
-    <div class="card-body">
-        <div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
-            <div class="col-12">
-                <a href="/funcionarios/new" class="btn btn-lg btn-success">
+<div class="ui-people ui-people-list">
+    <div class="ui-people-heading">
+        <div class="ui-people-heading-copy"><h1>Funcionários</h1><p>Lista de Funcionários · Total de registros: {{ count($funcionarios) }}</p></div>
+        <div class="ui-people-actions">
+                <a href="/funcionarios/new" class="btn btn-lg btn-success ui-people-primary">
                     <i class="fa fa-plus"></i>Novo Funcionario
                 </a>
-                <a href="/funcionarios/comissao" class="btn btn-lg btn-info">
+                <a href="/funcionarios/comissao" class="btn btn-lg btn-info ui-people-secondary">
                     <i class="fa fa-list"></i>Comissão
                 </a>
                 <!-- Botão de Importação Excel -->
-                <a href="#" data-toggle="modal" data-target="#modal_import_excel" class="btn btn-lg btn-success" style="background-color: #1d6f42; border-color: #1d6f42;">
+                <a href="#modal_import_excel" data-toggle="modal" data-target="#modal_import_excel" class="btn btn-lg btn-success ui-people-secondary">
                     <i class="fa fa-file-excel"></i>Importar Excel
                 </a>
-            </div>
-        <br>
+        </div>
+    </div>
 
-        <div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInRight" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
-            <br>
-            <h4>Lista de Funcionários</h4>
-            <label>Total de registros: {{count($funcionarios)}}</label>
+        <div class="ui-people-panel" id="kt_user_profile_aside">
             <div class="row">
 
                 <div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
-                    <div class="wizard wizard-3" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
-                        <div class="wizard-nav">
-                            <div class="wizard-steps px-8 py-8 px-lg-15 py-lg-3">
-                                <div class="wizard-step" data-wizard-type="step" data-wizard-state="done">
-                                    <div class="wizard-label">
-                                        <h3 class="wizard-title"><span><i style="font-size: 40px" class="la la-table"></i>Tabela</span></h3>
-                                        <div class="wizard-bar"></div>
-                                    </div>
-                                </div>
-                                <div class="wizard-step" data-wizard-type="step" data-wizard-state="current">
-                                    <div class="wizard-label" id="grade">
-                                        <h3 class="wizard-title"><span><i style="font-size: 40px" class="la la-tablet"></i>Grade</span></h3>
-                                        <div class="wizard-bar"></div>
-                                    </div>
-                                </div>
-                            </div>
+                    <div class="ui-people-view-switch" id="kt_wizard_v3" data-wizard-clickable="true">
+                        <div class="ui-people-tabs" role="tablist" aria-label="Visualização de funcionários">
+                            <button type="button" class="ui-people-tab is-active" id="ui-people-table-tab" role="tab" aria-controls="ui-people-table" aria-selected="true" data-people-tab="table" data-wizard-type="step"><i class="la la-table" aria-hidden="true"></i> Tabela</button>
+                            <button type="button" class="ui-people-tab" id="grade" role="tab" aria-controls="ui-people-grid" aria-selected="false" data-people-tab="grid" data-wizard-type="step"><i class="la la-th-large" aria-hidden="true"></i> Grade</button>
                         </div>
 
                         {{-- VIEW TABELA --}}
-                        <div class="pb-5" data-wizard-type="step-content">
+                        <div id="ui-people-table" class="ui-people-table-pane" role="tabpanel" aria-labelledby="ui-people-table-tab" data-people-panel="table" data-wizard-type="step-content">
                             <div class="row">
                                 <div class="col-xl-12">
-                                    <div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded">
-                                        <table class="datatable-table" style="max-width: 100%; overflow: scroll">
-                                            <thead class="datatable-head">
-                                                <tr class="datatable-row" style="left: 0px;">
-                                                    <th class="datatable-cell"><span style="width: 60px;">FOTO</span></th>
-                                                    <th class="datatable-cell"><span style="width: 200px;">NOME</span></th>
-                                                    <th class="datatable-cell"><span style="width: 120px;">FUNÇÃO</span></th>
-                                                    <th class="datatable-cell"><span style="width: 100px;">CELULAR</span></th>
-                                                    <th class="datatable-cell"><span style="width: 100px;">STATUS</span></th>
-                                                    <th class="datatable-cell"><span style="width: 250px;">ENDEREÇO</span></th>
-                                                    <th class="datatable-cell"><span style="width: 150px;">AÇÕES</span></th>
+                                    <div id="kt_datatable" class="ui-people-table-scroll">
+                                        <table class="ui-people-table">
+                                            <thead>
+                                                <tr>
+                                                    <th><span>FOTO</span></th>
+                                                    <th><span>NOME</span></th>
+                                                    <th><span>FUNÇÃO</span></th>
+                                                    <th><span>CELULAR</span></th>
+                                                    <th><span>STATUS</span></th>
+                                                    <th><span>ENDEREÇO</span></th>
+                                                    <th><span>AÇÕES</span></th>
                                                 </tr>
                                             </thead>
-                                            <tbody id="body" class="datatable-body">
+                                            <tbody id="body">
                                                 @foreach($funcionarios as $f)
                                                 @php 
                                                     $aniversariante = $f->data_nascimento && \Carbon\Carbon::parse($f->data_nascimento)->month == \Carbon\Carbon::now()->month;
                                                 @endphp
-                                                <tr class="datatable-row">
-                                                    <td class="datatable-cell">
-                                                        <span style="width: 60px;">
+                                                <tr>
+                                                    <td>
+                                                        <span>
                                                             @if($f->foto_funcionario)
                                                                 <img src="{{ asset('imgs_funcionarios/'.$f->foto_funcionario) }}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #EEE">
                                                             @else
@@ -75,16 +67,16 @@
                                                             @endif
                                                         </span>
                                                     </td>
-                                                    <td class="datatable-cell">
-                                                        <span style="width: 200px;">
+                                                    <td>
+                                                        <span>
                                                             <strong>{{$f->nome}}</strong>
                                                             @if($aniversariante)
                                                                 <span class="label label-warning label-inline ml-2 animate__animated animate__infinite animate__pulse">🎂 Niver!</span>
                                                             @endif
                                                         </span>
                                                     </td>
-                                                    <td class="datatable-cell">
-                                                      <span style="width: 120px;">
+                                                    <td>
+                                                      <span>
                                                           {{ optional($f->getRelation('funcao'))->nome ?? $f->funcao_id ?? '--' }}
 
                                                           {{-- Alerta de CNH --}}
@@ -104,22 +96,22 @@
                                                       </span>
                                                   </td>
                                                     
-                                                    <td class="datatable-cell"><span style="width: 100px;">{{ $f->telefone ?? '--' }}</span></td>
-                                                    <td class="datatable-cell">
-                                                        <span style="width: 100px;">
+                                                    <td><span>{{ $f->telefone ?? '--' }}</span></td>
+                                                    <td>
+                                                        <span>
                                                             <span class="label label-inline {{ $f->status_funcionario == 'Ativo' ? 'label-light-success' : 'label-light-danger' }}">
                                                                 {{ $f->status_funcionario }}
                                                             </span>
                                                         </span>
                                                     </td>
-                                                    <td class="datatable-cell"><span style="width: 250px;">{{$f->rua}}, {{$f->numero}} - {{$f->bairro}}</span></td>
+                                                    <td><span>{{$f->rua}}, {{$f->numero}} - {{$f->bairro}}</span></td>
 
-                                                    <td class="datatable-cell">
-                                                        <span style="width: 150px;">
-                                                            <a class="btn btn-sm btn-warning" onclick='swal("Atenção!", "Deseja editar?", "warning").then((sim) => {if(sim){ location.href="/funcionarios/edit/{{ $f->id }}" } })' href="#!">
+                                                    <td>
+                                                        <span>
+                                                            <a class="btn btn-sm ui-people-secondary" aria-label="Editar {{ $f->nome }}" onclick='swal("Atenção!", "Deseja editar?", "warning").then((sim) => {if(sim){ location.href="/funcionarios/edit/{{ $f->id }}" } })' href="#!">
                                                                 <i class="la la-edit"></i>    
                                                             </a>
-                                                            <a class="btn btn-sm btn-danger" onclick='swal("Atenção!", "Deseja remover?", "warning").then((sim) => {if(sim){ location.href="/funcionarios/delete/{{ $f->id }}" } })' href="#!">
+                                                            <a class="btn btn-sm ui-people-danger" aria-label="Remover {{ $f->nome }}" onclick='swal("Atenção!", "Deseja remover?", "warning").then((sim) => {if(sim){ location.href="/funcionarios/delete/{{ $f->id }}" } })' href="#!">
                                                                 <i class="la la-trash"></i>    
                                                             </a>
                                                         </span>
@@ -134,7 +126,7 @@
                         </div>
 
                         {{-- VIEW GRADE (CARDS) --}}
-                        <div class="pb-5" data-wizard-type="step-content">
+                        <div id="ui-people-grid" class="ui-people-grid-pane" role="tabpanel" aria-labelledby="grade" data-people-panel="grid" data-wizard-type="step-content" hidden>
                             <div class="row">
                                 @foreach($funcionarios as $c)
                                 @php 
@@ -146,8 +138,8 @@
                                     $tempoEmpresa = $c->data_admissao ? \Carbon\Carbon::parse($c->data_admissao)->diffForHumans(null, true) : '--';
                                 @endphp
                                 <div class="col-sm-12 col-lg-6 col-md-6 col-xl-4">
-                                    <div class="card card-custom gutter-b {{ $aniversariante ? 'bg-light-warning border border-warning' : '' }}">
-                                        <div class="card-header border-0 pt-5">
+                                    <div class="ui-people-person {{ $aniversariante ? 'ui-people-birthday-card' : '' }}">
+                                        <div class="ui-people-person-head">
                                             <div class="card-title">
                                                 <div class="symbol symbol-50 symbol-light mr-4">
                                                     @if($c->foto_funcionario)
@@ -190,7 +182,7 @@
                                             </div>
                                         </div>
 
-                                        <div class="card-body pt-2">
+                                        <div class="ui-people-person-body">
                                             <div class="d-flex align-items-center mb-2">
                                                 <span class="font-weight-bold mr-2 text-dark-75">Status:</span>
                                                 <span class="label {{ $c->status_funcionario == 'Ativo' ? 'label-light-success' : 'label-light-danger' }} label-inline">{{ $c->status_funcionario }}</span>
@@ -208,9 +200,9 @@
                                                 <span class="text-success font-weight-bolder">{{ $tempoEmpresa }}</span>
                                             </div>
                                         </div>
-                                        <div class="card-footer py-3 d-flex justify-content-between bg-light-secondary">
-                                            <a href="/funcionarios/edit/{{$c->id}}" class="btn btn-sm btn-info font-weight-bold"><i class="la la-edit"></i> Editar</a>
-                                            <a href="/funcionarios/contatos/{{$c->id}}" class="btn btn-sm btn-secondary font-weight-bold"><i class="la la-phone"></i> Contatos</a>
+                                        <div class="ui-people-person-actions">
+                                            <a href="/funcionarios/edit/{{$c->id}}" class="btn btn-sm ui-people-secondary"><i class="la la-edit"></i> Editar</a>
+                                            <a href="/funcionarios/contatos/{{$c->id}}" class="btn btn-sm ui-people-secondary"><i class="la la-phone"></i> Contatos</a>
                                         </div>
                                     </div>
                                 </div>
@@ -222,10 +214,9 @@
                 </div>
             </div>
         </div>
-    </div>
 </div>
 <!-- Modal de Importação Excel -->
-<div class="modal fade" id="modal_import_excel" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static">
+<div class="modal fade ui-people-modal" id="modal_import_excel" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static">
     <div class="modal-dialog" role="document">
         <form action="/funcionarios/importExcel" method="POST" enctype="multipart/form-data">
             @csrf
@@ -233,7 +224,7 @@
                 <div class="modal-header">
                     <h5 class="modal-title">Importar Funcionários (Excel)</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <i aria-hidden="true" class="ki ki-close"></i>
+                        &times;
                     </button>
                 </div>
                 <div class="modal-body">
@@ -243,8 +234,8 @@
                             <strong>Dica:</strong> Para evitar erros, baixe nosso modelo padrão: 
                             <a href="/funcionarios/downloadLayout" class="font-weight-bold text-primary">Baixar Layout Exemplo</a>
                         </div>
-                        <label>Unidade de Destino</label>
-                        <select class="form-control custom-select" name="filial_id">
+                        <label for="ui-people-import-filial">Unidade de Destino</label>
+                        <select id="ui-people-import-filial" class="form-control custom-select" name="filial_id">
                             <option value="NULL">MATRIZ (Null)</option>
                             @foreach($filiais as $f)
                                 <option value="{{$f->id}}">{{ $f->nome ?? 'Filial '.$f->id }}</option>
@@ -253,8 +244,8 @@
                     </div>
                     
                     <div class="form-group">
-                        <label>Selecione a Planilha (.xlsx)</label>
-                        <input type="file" name="file" class="form-control" accept=".xlsx, .xls" required>
+                        <label for="ui-people-import-file">Selecione a Planilha (.xlsx)</label>
+                        <input id="ui-people-import-file" type="file" name="file" class="form-control" accept=".xlsx, .xls" required>
                         <small class="form-text text-muted">A importação será vinculada à Matriz.</small>
                     </div>
 
@@ -275,4 +266,28 @@
         </form>
     </div>
 </div>
+@endsection
+@section('javascript')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const root = document.getElementById('kt_wizard_v3');
+    if (!root) return;
+    const tabs = Array.from(root.querySelectorAll('[data-people-tab]'));
+    const panels = Array.from(root.querySelectorAll('[data-people-panel]'));
+    function activate(tab) {
+        tabs.forEach(item => { const active = item === tab; item.classList.toggle('is-active', active); item.setAttribute('aria-selected', String(active)); item.tabIndex = active ? 0 : -1; });
+        panels.forEach(panel => { panel.hidden = panel.dataset.peoplePanel !== tab.dataset.peopleTab; });
+    }
+    tabs.forEach((tab, index) => {
+        tab.addEventListener('click', () => activate(tab));
+        tab.addEventListener('keydown', event => {
+            if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+            event.preventDefault();
+            const next = tabs[(index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length];
+            activate(next); next.focus();
+        });
+    });
+    activate(tabs[0]);
+});
+</script>
 @endsection

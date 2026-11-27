@@ -1,10 +1,21 @@
 @extends('default.layout')
+@section('css')
+@unless(config('ui_theme.active', false))
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-commerce.css') }}?v={{ filemtime(public_path('css/ui-commerce.css')) }}">
+@endunless
+@endsection
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-commerce.css') }}?v={{ filemtime(public_path('css/ui-commerce.css')) }}">
+@endpush
 @section('content')
+<div class="ui-admin ui-commerce ui-commerce-categoriaDelivery">
 
-<div class="card card-custom gutter-b">
+<div class="ui-admin-panel ui-commerce-panel gutter-b">
 
 
-	<div class="card-body">
+	<div class="ui-admin-panel-body ui-commerce-panel-body">
 		<div class="">
 
 			<form method="post" action="/deliveryCategoria/saveAditional">
@@ -41,12 +52,12 @@
 
 
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-4">
-					<div class="card card-custom gutter-b example example-compact">
-						<div class="card-header">
+					<div class="ui-admin-panel ui-commerce-panel gutter-b">
+						<div class="ui-admin-panel-head ui-commerce-panel-head">
 
-							<h3 class="card-title" style="font-size: 12px;">{{ $c->complemento->id }} - {{ $c->complemento->nome() }}
+							<h3 class="ui-commerce-title" style="font-size: 12px;">{{ $c->complemento->id }} - {{ $c->complemento->nome() }}
 							</h3>
-							<div class="card-toolbar">
+							<div class="ui-commerce-tools">
 
 
 								<a class="btn btn-icon btn-circle btn-sm btn-light-danger mr-1" onclick='swal("Atenção!", "Deseja remover este registro?", "warning").then((sim) => {if(sim){ location.href="/deliveryCategoria/removeAditional/{{ $c->id }}" }else{return false} })' href="#!">
@@ -69,4 +80,5 @@
 </div>
 
 
+</div>
 @endsection	

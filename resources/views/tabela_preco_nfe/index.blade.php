@@ -1,7 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+@endpush
 @section('content')
 
-    <div class="container-fluid">
+    <div class="document-fiscal-page document-fiscal-page--tabela-preco-nfe container-fluid">
         <h2 class="mb-4">Tabela de Preços para NF-e (Pauta Fiscal)</h2>
 
         @if(session('sucesso'))

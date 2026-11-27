@@ -1,7 +1,18 @@
 @extends('default.layout')
+@section('css')
+@unless(config('ui_theme.active', false))
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-commerce.css') }}?v={{ filemtime(public_path('css/ui-commerce.css')) }}">
+@endunless
+@endsection
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-commerce.css') }}?v={{ filemtime(public_path('css/ui-commerce.css')) }}">
+@endpush
 @section('content')
-<div class="card card-custom gutter-b">
-	<div class="card-body">
+<div class="ui-admin ui-commerce ui-commerce-codigoDesconto">
+<div class="ui-admin-panel ui-commerce-panel gutter-b">
+	<div class="ui-admin-panel-body ui-commerce-panel-body">
 		<div class="">
 			<div class="col-lg-12">
 				<!--begin::Portlet-->
@@ -9,10 +20,10 @@
 				<form class="col s12" method="post" action="/codigoDesconto/sms">
 					@csrf
 					<input type="hidden" value="{{$cupom->id}}" name="cupom_id">
-					<div class="card card-custom gutter-b example example-compact">
-						<div class="card-header">
+					<div class="ui-admin-panel ui-commerce-panel gutter-b">
+						<div class="ui-admin-panel-head ui-commerce-panel-head">
 
-							<h3 class="card-title">Envio de Notificação Push App Delivery</h3>
+							<h3 class="ui-commerce-title">Envio de Notificação Push App Delivery</h3>
 						</div>
 
 					</div>
@@ -34,8 +45,8 @@
 
 					<div class="row">
 						<div class="col-xl-12">
-							<div class="kt-section kt-section--first">
-								<div class="kt-section__body">
+							<div class="ui-commerce-section">
+								<div class="ui-commerce-section-body">
 									
 									<div class="row">
 										<div class="form-group validated col-12">
@@ -47,7 +58,7 @@
 									</div>
 								</div>
 							</div>
-							<div class="card-footer">
+							<div class="ui-admin-panel-foot ui-commerce-panel-foot">
 
 								<div class="row">
 									<div class="col-xl-2">
@@ -74,5 +85,6 @@
 			</div>
 		</div>
 	</div>
+</div>
 </div>
 @endsection	

@@ -1,7 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+@endpush
 @section('content')
 
-<div class="card card-custom gutter-b">
+<div class="document-fiscal-page document-fiscal-page--pesagem-nfe card card-custom gutter-b">
     <div class="card-header">
         <h3 class="card-title"><i class="fa fa-search text-primary mr-2"></i> Filtros de Pesagem</h3>
     </div>

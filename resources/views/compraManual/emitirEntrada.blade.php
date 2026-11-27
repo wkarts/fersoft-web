@@ -1,8 +1,13 @@
 
 @extends('default.layout')
-@section('content')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 
-<div class="card card-custom gutter-b">
+@section('content')
+<header class="fer-page__heading"><h1>Entrada da Compra</h1></header>
+
+<div class="card card-custom gutter-b fer-page fer-detail">
 	<div class="col-xl-12">
 
 		<div class="card-body">
@@ -367,7 +372,7 @@
 </div>
 
 <div class="modal fade" id="modal-cancelar" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="modal-dialog modal-lg fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title" id="exampleModalLabel">Cancelar NFe de Entrada</h5>
@@ -398,7 +403,7 @@
 </div>
 
 <div class="modal fade" id="modal4" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="modal-dialog modal-lg fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">CARTA DE CORREÇÃO NFe ENTRADA<strong class="text-danger" style="margin-left: 3px;">{{$compra->numero_emissao}}</strong></h5>
@@ -426,7 +431,7 @@
 </div>
 
 <div class="modal fade" id="modal-importacao" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-xl" role="document">
+	<div class="modal-dialog modal-xl fer-dialog" role="document">
 		<form class="modal-content" method="post" action="{{ route('compras.set-dados-importacao-item') }}">
 			@csrf
 			<div class="modal-header">
@@ -531,7 +536,7 @@
 </div>
 
 <div class="modal fade" id="modal-referencia-nfe" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="modal-dialog modal-lg fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">Referência NF-e</h5>

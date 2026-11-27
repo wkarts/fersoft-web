@@ -1,9 +1,20 @@
 @extends('default.layout')
+@section('css')
+@unless(config('ui_theme.active', false))
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-commerce.css') }}?v={{ filemtime(public_path('css/ui-commerce.css')) }}">
+@endunless
+@endsection
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-commerce.css') }}?v={{ filemtime(public_path('css/ui-commerce.css')) }}">
+@endpush
 @section('content')
+<div class="ui-admin ui-commerce ui-commerce-carrosselEcommerce">
 
-<div class="card card-custom gutter-b">
+<div class="ui-admin-panel ui-commerce-panel gutter-b">
 
-	<div class="card-body">
+	<div class="ui-admin-panel-body ui-commerce-panel-body">
 		<div class="">
 
 			<div class="col-sm-12 col-lg-4 col-md-6 col-xl-4">
@@ -25,9 +36,9 @@
 				<!-- inicio grid -->
 				<div class="col-xl-4 col-lg-6 col-md-6 col-sm-6">
 					<!--begin::Card-->
-					<div class="card card-custom gutter-b card-stretch">
+					<div class="ui-admin-panel ui-commerce-panel gutter-b">
 						<!--begin::Body-->
-						<div class="card-body pt-4">
+						<div class="ui-admin-panel-body ui-commerce-panel-body pt-4">
 							<!--begin::Toolbar-->
 							<div class="d-flex justify-content-end">
 								<div class="dropdown dropdown-inline" data-toggle="tooltip" title="" data-placement="left" >
@@ -111,5 +122,6 @@
 			</div>
 		</div>
 	</div>
+</div>
 </div>
 @endsection	

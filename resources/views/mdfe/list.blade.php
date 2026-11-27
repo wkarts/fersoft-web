@@ -1,12 +1,15 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-fiscal.css') }}?v={{ filemtime(public_path('css/ui-fiscal.css')) }}">
+@endpush
 @section('content')
-<div class="card card-custom gutter-b">
-	<div class="card-body">
+<div class="fiscal-page fiscal-page--mdfe-list">
+	<div class="fiscal-page__content card-body">
 
-		<div class="" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
+		<div class="fiscal-list-intro" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
 
 			<input type="hidden" id="_token" value="{{ csrf_token() }}">
-			<form class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft" method="get" action="/mdfe/filtro">
+			<form class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft fiscal-filters" method="get" action="/mdfe/filtro">
 				<div class="row align-items-center">
 
 					<div class="form-group col-lg-2 col-md-4 col-sm-6">
@@ -62,7 +65,7 @@
 				</div>
 			</form>
 			<br>
-			<h4 class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">Lista de MDFe</h4>
+			<h4 class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft fiscal-page__title">Lista de MDFe</h4>
 
 			<label class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">Registros: <strong class="text-success">{{sizeof($mdfes)}}</strong></label>
 			<div class="row @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
@@ -523,7 +526,7 @@
 </div>
 
 
-<div class="modal fade" id="modal1" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade fiscal-dialog" id="modal1" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-lg" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -552,7 +555,7 @@
 	</div>
 </div>
 
-<div class="modal fade" id="modal1_aux" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade fiscal-dialog" id="modal1_aux" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-lg" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -581,7 +584,7 @@
 	</div>
 </div>
 
-<div class="modal fade" id="modal5" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade fiscal-dialog" id="modal5" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-lg" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -613,7 +616,7 @@
 </div>
 
 
-<div class="modal fade" id="modal-nfe" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade fiscal-dialog" id="modal-nfe" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-xl" role="document">
 		<div class="modal-content">
 			<div class="modal-header">

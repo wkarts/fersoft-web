@@ -1,4 +1,7 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-cte.css') }}?v={{ filemtime(public_path('css/ui-cte.css')) }}">
+@endpush
 @section('content')
 <style type="text/css">
 	.btn-file {
@@ -23,9 +26,9 @@
 	}
 </style>
 
-<div class="card card-custom gutter-b">
+<div class="cte-page cte-page--alterar_estado_fiscal">
 
-	<div class="card-body">
+	<div class="cte-page__content card-body">
 		<div class="content d-flex flex-column flex-column-fluid" id="kt_content" >
 
 			<div class="col-lg-12" id="content">

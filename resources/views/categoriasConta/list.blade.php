@@ -1,5 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-catalog-config.css') }}?v={{ filemtime(public_path('css/fer-catalog-config.css')) }}">
+@endpush
 @section('content')
+<div class="fer-catalog-config fer-catalog-config--list fer-catalog-config--categoriasConta">
+<h1 class="fer-catalog-config__heading">Categorias de Contas</h1>
 <div class="card card-custom gutter-b">
     <div class="card-body">
         <div class="animate__animated animate__backInLeft">
@@ -65,5 +70,6 @@
                 @endforeach </div>
         </div>
     </div>
+</div>
 </div>
 @endsection

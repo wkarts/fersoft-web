@@ -1,6 +1,10 @@
 @extends('default.layout')
 
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-catalog-config.css') }}?v={{ filemtime(public_path('css/fer-catalog-config.css')) }}">
+@endpush
 @section('content')
+<div class="fer-catalog-config fer-catalog-config--list fer-catalog-config--balanca_config">
     <style type="text/css">
         /* Altura fixa para linhas */
         .datatable-row, .datatable-cell {
@@ -269,7 +273,7 @@
             </div>
         </div>
     @endforeach
-
+</div>
 @endsection
 
 @section('javascript')

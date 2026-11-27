@@ -1,7 +1,12 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 
 @section('content')
-    <div class="container-fluid py-4">
+<header class="fer-page__heading"><h1>Relatórios DRE</h1></header>
+    <div class="container-fluid py-4 fer-page fer-finance">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h2 class="m-0">Relatórios DRE</h2>
             <a href="/dre" class="btn btn-primary">

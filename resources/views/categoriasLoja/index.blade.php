@@ -1,9 +1,20 @@
 @extends('default.layout')
+@section('css')
+@unless(config('ui_theme.active', false))
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-commerce.css') }}?v={{ filemtime(public_path('css/ui-commerce.css')) }}">
+@endunless
+@endsection
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-commerce.css') }}?v={{ filemtime(public_path('css/ui-commerce.css')) }}">
+@endpush
 @section('content')
+<div class="ui-admin ui-commerce ui-commerce-categoriasLoja">
 
-<div class="card card-custom gutter-b">
+<div class="ui-admin-panel ui-commerce-panel gutter-b">
 
-	<div class="card-body">
+	<div class="ui-admin-panel-body ui-commerce-panel-body">
 
 
 		<div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded">
@@ -58,6 +69,7 @@
 </div>
 
 
+</div>
 @endsection	
 
 @section('javascript')

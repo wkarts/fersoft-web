@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 @section('content')
 
-<div class="card card-custom gutter-b">
+<div class="fer-extra fer-extra--support fer-extra--pagamento_lote fer-extra--canvas card card-custom gutter-b">
     <div class="card-header bg-white py-3">
         <h5 class="mb-0 text-dark font-weight-bold">
             <i class="fas fa-file-invoice-dollar text-success mr-2"></i> Lote de Pagamento de Pesagens

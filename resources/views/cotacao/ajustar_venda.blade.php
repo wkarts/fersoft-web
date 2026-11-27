@@ -1,7 +1,11 @@
 @extends('default.layout', ['title' => 'Cotação para venda'])
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
 
-<div class="card card-custom gutter-b" id="content">
+<header class="fer-page__heading"><h1>Cotação</h1></header>
+<div class="fer-page fer-operational fer-form card card-custom gutter-b" id="content">
 
 	<div class="card-body @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">
 		<div class="content d-flex flex-column flex-column-fluid" id="kt_content" >

@@ -1,4 +1,7 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+@endpush
 @section('css')
 <style type="text/css">
 	.title{
@@ -8,7 +11,7 @@
 @endsection
 @section('content')
 
-<div class="card card-custom gutter-b">
+<div class="document-fiscal-page document-fiscal-page--dfe card card-custom gutter-b">
 
 	<div class="card-body">
 		<div class="">

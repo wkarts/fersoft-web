@@ -12,8 +12,12 @@
 
 @extends('default.layout')
 
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-catalog-config.css') }}?v={{ filemtime(public_path('css/fer-catalog-config.css')) }}">
+@endpush
+
 @section('content')
-    <div class="container-fluid py-4">
+    <div class="fer-catalog-config fer-catalog-config--list container-fluid py-4">
 
         {{-- Filtros Superiores (Ocultos na Impressão) --}}
         <div class="card shadow-sm border-0 mb-4 rounded-4 no-print bg-white">

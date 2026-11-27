@@ -1,6 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-admin-modules.css') }}?v={{ filemtime(public_path('css/ui-admin-modules.css')) }}">
+@endpush
 
 @section('content')
+<div class="document-fiscal-page admin-page admin-page--updates">
 <div class="card card-custom gutter-b">
     <div class="card-header py-3">
         <div class="card-title">
@@ -56,5 +61,6 @@
             <pre class="bg-dark text-white p-4 rounded overflow-auto" style="max-height: 400px;">{{ json_encode($log->context, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
         @endif
     </div>
+</div>
 </div>
 @endsection

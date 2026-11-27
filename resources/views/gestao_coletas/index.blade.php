@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 @section('content')
 
-    <div class="card card-custom gutter-b">
+    <div class="fer-extra fer-extra--support fer-extra--gestao_coletas card card-custom gutter-b">
         <div class="card-header">
             <div class="card-title">
                 <h3 class="card-label">
@@ -82,7 +86,7 @@
     </div>
 
     <!-- MODAL DE AGENDAMENTO INTELIGENTE -->
-    <div class="modal fade" id="modal-agendar" tabindex="-1">
+    <div class="modal fer-extra-modal fade" id="modal-agendar" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <form id="form-agendar" method="POST">
@@ -178,7 +182,7 @@
     </div>
 
     <!-- MODAL PARA VER FOTOS -->
-    <div class="modal fade" id="modal-fotos" tabindex="-1">
+    <div class="modal fer-extra-modal fade" id="modal-fotos" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header bg-dark text-white">

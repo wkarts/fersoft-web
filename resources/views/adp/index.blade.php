@@ -1,4 +1,8 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 
 @section('content')
 <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -26,7 +30,7 @@
     .adp-log { max-height:190px; overflow:auto; background:#0b1220; color:#d1e7ff; border-radius:10px; font-size:11px; padding:12px; }
 </style>
 
-<div class="container-fluid adp-page">
+<div class="fer-extra fer-extra--people fer-extra--adp container-fluid adp-page">
     <div class="adp-hero mb-4">
         <div class="d-flex justify-content-between align-items-start flex-wrap">
             <div>

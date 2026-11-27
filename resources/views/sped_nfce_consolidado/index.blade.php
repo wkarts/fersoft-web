@@ -1,10 +1,13 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-fiscal.css') }}?v={{ filemtime(public_path('css/ui-fiscal.css')) }}">
+@endpush
 @section('content')
-    <div class="card card-custom gutter-b">
-        <div class="card-body">
+    <div class="fiscal-page fiscal-page--sped_nfce_consolidado-index">
+        <div class="fiscal-page__content card-body">
 
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h3 class="mb-0">{{ $title ?? 'SPED NFC-e Consolidado' }}</h3>
+                <h3 class="mb-0 fiscal-page__title">{{ $title ?? 'SPED NFC-e Consolidado' }}</h3>
                 <button class="btn btn-success" data-toggle="modal" data-target="#modalUploadSped">
                     Novo Consolidado
                 </button>
@@ -61,7 +64,7 @@
     </div>
 
     {{-- MODAL DE UPLOAD --}}
-    <div class="modal fade" id="modalUploadSped" tabindex="-1" role="dialog" aria-labelledby="modalUploadSpedLabel" aria-hidden="true">
+    <div class="modal fade fiscal-dialog" id="modalUploadSped" tabindex="-1" role="dialog" aria-labelledby="modalUploadSpedLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
             <form method="post" action="{{ $actionSave }}" enctype="multipart/form-data" class="@if(env('ANIMACAO')) animate__animated @endif animate__fadeIn w-100">
                 @csrf

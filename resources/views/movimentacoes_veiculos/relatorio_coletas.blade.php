@@ -1,4 +1,7 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
 
     <style>
@@ -20,7 +23,7 @@
         }
     </style>
 
-    <div class="card card-custom gutter-b">
+    <div class="fer-report-screen card card-custom gutter-b">
         <div class="card-body">
 
             <!-- Cabeçalho e Ações -->
@@ -32,7 +35,7 @@
             </div>
 
             <!-- Filtros (Oculto na Impressão) -->
-            <form method="get" action="/movimentacaoVeiculo/relatorioColetas" class="no-print mb-5">
+            <form method="get" action="/movimentacaoVeiculo/relatorioColetas" class="fer-report-filter no-print mb-5">
                 <div class="row align-items-end">
                     <div class="col-lg-3 mb-3">
                         <label class="font-weight-bold">Veículo</label>

@@ -1,4 +1,7 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-operations.css') }}?v={{ filemtime(public_path('css/ui-operations.css')) }}">
+@endpush
 @section('css')
 <style type="text/css">
 	.card-header{
@@ -10,8 +13,8 @@
 </style>
 @endsection
 @section('content')
-<div class="card gutter-b">
-	<div class="card-body">
+<div class="operations-page operations-page--reports">
+	<div class="operations-page__content card-body">
 
         <!-- Exibe mensagens de sucesso e erro -->
         @if(session('mensagem_sucesso'))
@@ -38,8 +41,8 @@
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 					<div class="accordion" id="accordionExample1">
 
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseOne1a">
 									<h3 class="card-title">Relatório de Vendas<i class="la la-angle-double-down"></i>
 									</h3>
@@ -143,8 +146,8 @@
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 					<div class="accordion" id="accordionCompras">
 
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseCompra">
 									<h3 class="card-title">Relatório de Compras<i class="la la-angle-double-down"></i>
 									</h3>
@@ -223,8 +226,8 @@
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 					<div class="accordion" id="accordionExample1">
 
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseOne1">
 									<h3 class="card-title">Relatório de Somatório de Vendas<i class="la la-angle-double-down"></i>
 									</h3>
@@ -302,8 +305,8 @@
 
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">
 					<div class="accordion" id="accordionExample1">
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseOne2">
 									<h3 class="card-title">Relatório de Somatório de Compras <i class="la la-angle-double-down"></i>
 									</h3>
@@ -382,8 +385,8 @@
 				<!-- <div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">
 					<div class="accordion" id="accordionExample1">
 
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseOne3">
 									<h3 class="card-title">Relatório de Vendas por Cliente <i class="la la-angle-double-down"></i>
 									</h3>
@@ -469,8 +472,8 @@
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 					<div class="accordion" id="accordionExample1">
 
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseOne4">
 									<h3 class="card-title">Relatório de Lucratividade Sintético <i class="la la-angle-double-down"></i>
 									</h3>
@@ -541,8 +544,8 @@
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 					<div class="accordion" id="accordionExampleAnalitico">
 
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseOneLucroAnalitico">
 									<h3 class="card-title">Relatório de Lucratividade Analítico <i class="la la-angle-double-down"></i>
 									</h3>
@@ -628,8 +631,8 @@
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">
 					<div class="accordion" id="accordionExample1">
 
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseOne5">
 									<h3 class="card-title">Relatório de estoque de produtos <i class="la la-angle-double-down"></i>
 									</h3>
@@ -700,8 +703,8 @@
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">
 					<div class="accordion" id="accordionExample1">
 
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseOne51">
 									<h3 class="card-title">Relatório de lista de preço<i class="la la-angle-double-down"></i>
 									</h3>
@@ -758,8 +761,8 @@
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 					<div class="accordion" id="accordionExample1">
 
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseOne6">
 
 									<h3 class="card-title">Relatório de Comissão de Vendas <i class="la la-angle-double-down"></i>
@@ -841,8 +844,8 @@
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 					<div class="accordion" id="accordionExample1">
 
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseOne7">
 									<h3 class="card-title">Relatório de Estoque Mínimo <i class="la la-angle-double-down"></i>
 									</h3>
@@ -904,8 +907,8 @@
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">
 					<div class="accordion" id="accordionExample1">
 
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseOne8">
 									<h3 class="card-title">Relatório de Vendas Diária(s) Detalhado <i class="la la-angle-double-down"></i>
 									</h3>
@@ -971,8 +974,8 @@
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 					<div class="accordion" id="accordionExample1">
 
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseOne9">
 
 									<h3 class="card-title">Relatório Custo/Venda <i class="la la-angle-double-down"></i>
@@ -1086,8 +1089,8 @@
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 					<div class="accordion" id="accordionExample1">
 
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseOne10">
 
 									<h3 class="card-title">Relatório Tipos de Pagamento <i class="la la-angle-double-down"></i>
@@ -1147,8 +1150,8 @@
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 					<div class="accordion" id="accordionExample1">
 
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseOne12">
 
 									<h3 class="card-title">Relatório Cadastro de Produtos <i class="la la-angle-double-down"></i>
@@ -1218,8 +1221,8 @@
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 					<div class="accordion" id="accordionExample1">
 
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseOne13">
 
 									<h3 class="card-title">Relatório de Venda de Produtos <i class="la la-angle-double-down"></i>
@@ -1346,8 +1349,8 @@
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 					<div class="accordion" id="accordionExample1">
 
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseOne21">
 
 									<h3 class="card-title">Relatório de Venda de Produtos por comissão/vendedor<i class="la la-angle-double-down"></i>
@@ -1456,8 +1459,8 @@
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 					<div class="accordion" id="accordionExample1">
 
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseOne14">
 
 									<h3 class="card-title">Relatório Fiscal<i class="la la-angle-double-down"></i>
@@ -1569,8 +1572,8 @@
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 					<div class="accordion" id="accordionExample1">
 
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseOne15">
 									<h3 class="card-title">Relatório de Produto por CFOP<i class="la la-angle-double-down"></i>
 									</h3>
@@ -1611,8 +1614,8 @@
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 					<div class="accordion" id="accordionExample1">
 
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseOne16">
 									<h3 class="card-title">Relatório de Boletos<i class="la la-angle-double-down"></i>
 									</h3>
@@ -1683,8 +1686,8 @@
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 					<div class="accordion" id="accordionExample1">
 
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseOne17">
 									<h3 class="card-title">Relatório de Comissão de Assessor<i class="la la-angle-double-down"></i>
 									</h3>
@@ -1767,8 +1770,8 @@
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 					<div class="accordion" id="accordionExample1">
 
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseOne18">
 									<h3 class="card-title">Relatório de CTe<i class="la la-angle-double-down"></i>
 									</h3>
@@ -1850,8 +1853,8 @@
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 					<div class="accordion" id="accordionExample1">
 
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseOne19">
 									<h3 class="card-title">Relatório de Clientes<i class="la la-angle-double-down"></i>
 									</h3>
@@ -1933,8 +1936,8 @@
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 					<div class="accordion" id="accordionExample1">
 
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseOne20">
 									<h3 class="card-title">Relatório de Locação<i class="la la-angle-double-down"></i>
 									</h3>
@@ -2014,8 +2017,8 @@
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 					<div class="accordion" id="accordionExample1">
 
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseOne22">
 									<h3 class="card-title">Relatório de Perca<i class="la la-angle-double-down"></i>
 									</h3>
@@ -2106,8 +2109,8 @@
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 					<div class="accordion" id="accordionExample1">
 
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseOne23">
 									<h3 class="card-title">Relatório de Sangrias<i class="la la-angle-double-down"></i>
 									</h3>
@@ -2175,8 +2178,8 @@
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 					<div class="accordion" id="accordionExample1">
 
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseOne24">
 									<h3 class="card-title">Relatório de Taxas<i class="la la-angle-double-down"></i>
 									</h3>
@@ -2233,8 +2236,8 @@
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 					<div class="accordion" id="accordionExample1">
 
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseOne25">
 									<h3 class="card-title">Relatório de Descontos<i class="la la-angle-double-down"></i>
 									</h3>
@@ -2291,8 +2294,8 @@
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 					<div class="accordion" id="accordionExample1">
 
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseOne26">
 									<h3 class="card-title">Relatório de Acréscimos<i class="la la-angle-double-down"></i>
 									</h3>
@@ -2349,8 +2352,8 @@
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 					<div class="accordion" id="accordionExample1">
 
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseOne27">
 									<h3 class="card-title">Relatório de Contas Recebidas<i class="la la-angle-double-down"></i>
 									</h3>
@@ -2418,8 +2421,8 @@
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 					<div class="accordion" id="accordionExample1">
 
-						<div class="card gutter-b example example-compact">
-							<div class="card-header card-report">
+						<div class="card gutter-b example example-compact operations-report-card">
+							<div class="card-header card-report operations-report-header">
 								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapseOne28">
 									<h3 class="card-title">Relatório de Curva ABC<i class="la la-angle-double-down"></i>
 									</h3>
@@ -2488,8 +2491,8 @@
                 {{-- COLUNA – RELATÓRIO DE PESAGEM (SIMPLES) --}}
                 <div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
                     <div class="accordion" id="accordionPesagemSimples">
-                        <div class="card gutter-b example example-compact">
-                            <div class="card-header card-report">
+                        <div class="card gutter-b example example-compact operations-report-card">
+                            <div class="card-header card-report operations-report-header">
                                 <div class="card-title collapsed" data-toggle="collapse" data-target="#collapsePesagemSimples">
                                     <h3 class="card-title">
                                         Relatório de Pesagem
@@ -2580,7 +2583,7 @@
                 <div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
                     <div class="accordion" id="accordionPesagemAnalitico">
                         <div class="card gutter-b example example-compact mt-5 mt-lg-0">
-                            <div class="card-header card-report">
+                            <div class="card-header card-report operations-report-header">
                                 <div class="card-title collapsed" data-toggle="collapse" data-target="#collapsePesagemAnalitico">
                                     <h3 class="card-title">
                                         Relatório Analítico de Pesagem
@@ -2700,8 +2703,8 @@
                 {{--
                                 <div class="col-sm-12 col-lg-6 col-md-6 col-xl-6 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
                                     <div class="accordion" id="accordionNFeGap">
-                                        <div class="card gutter-b example example-compact">
-                                            <div class="card-header card-report">
+                                        <div class="card gutter-b example example-compact operations-report-card">
+                                            <div class="card-header card-report operations-report-header">
                                                 <div class="card-title collapsed" data-toggle="collapse" data-target="#collapseNFeGap">
                                                     <h3 class="card-title">Relatório de Salto de Numeração NFe/NFCe <i class="la la-angle-double-down"></i></h3>
                                                 </div>

@@ -1,7 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+@endpush
 @section('content')
 
-<div class="card card-custom gutter-b">
+<div class="document-fiscal-page document-fiscal-page--nfse-tomadas card card-custom gutter-b">
     <div class="card-body">
 
         {{-- BLOCO DE ALERTAS --}}
@@ -289,7 +292,7 @@
 </div>
 
 {{-- MODAL DE MANIFESTAÇÃO DE REJEIÇÃO COORDENADA --}}
-<div class="modal fade" id="modal-rejeitar" data-backdrop="static" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal fade document-fiscal-dialog" id="modal-rejeitar" data-backdrop="static" tabindex="-1" role="dialog" aria-hidden="true">
     <form method="POST" action="/nfse-tomadas/rejeitar">
         @csrf
         <input type="hidden" name="nota_id" id="modal-rejeitar-id" />
@@ -334,7 +337,7 @@
         document.getElementById('modal-rejeitar-id').value = id;
     }
 </script>
-<div class="modal fade" id="modalComoFuncionaTomadas" tabindex="-1" role="dialog" aria-labelledby="modalLabelTomadas" aria-hidden="true">
+<div class="modal fade document-fiscal-dialog" id="modalComoFuncionaTomadas" tabindex="-1" role="dialog" aria-labelledby="modalLabelTomadas" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header bg-info text-white">

@@ -1,4 +1,4 @@
-<div class="modal fade right" id="modalNFe" tabindex="-1" role="dialog" aria-labelledby="myModalLabel"
+<div class="modal fade right document-fiscal-dialog" id="modalNFe" tabindex="-1" role="dialog" aria-labelledby="myModalLabel"
      aria-hidden="true" data-backdrop="true">
     <div class="modal-dialog modal-side modal-notify modal-info" role="document">
         <!-- Content -->

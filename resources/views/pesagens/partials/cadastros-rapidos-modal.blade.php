@@ -1,7 +1,7 @@
-<div class="modal fade" id="modalCadastroRapido" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal fer-extra-modal fer-weighing-quick-modal fade" id="modalCadastroRapido" tabindex="-1" role="dialog" aria-labelledby="quick_title" aria-hidden="true">
  <div class="modal-dialog modal-lg" role="document"><div class="modal-content"><form id="quick_form" novalidate enctype="multipart/form-data">
   @csrf
-  <div class="modal-header bg-primary text-white"><h5 class="modal-title" id="quick_title">Cadastro rápido</h5><button type="button" class="close text-white" data-dismiss="modal" aria-label="Fechar">&times;</button></div>
+  <div class="modal-header"><h5 class="modal-title" id="quick_title">Cadastro rápido</h5><button type="button" class="close" data-dismiss="modal" aria-label="Fechar">&times;</button></div>
   <div class="modal-body"><div id="quick_alert" class="alert alert-danger d-none"></div><input type="hidden" id="quick_type"><input type="hidden" id="quick_motorista_flag" name="motorista" value="0">
    <div class="quick-person row">
     <div class="form-group col-md-5"><label>Razão social / Nome *</label><input id="quick_razao_social" name="razao_social" class="form-control"><div class="invalid-feedback"></div></div>

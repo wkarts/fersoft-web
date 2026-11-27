@@ -1,0 +1,93 @@
+/* Telas autenticadas de delivery, ecommerce e integrações, sobre o sistema visual FERSOFT. */
+.ui-commerce .ui-commerce-panel { background: #fff; }
+.ui-commerce .ui-commerce-panel-head { background: #fafcfc; }
+.ui-commerce .ui-commerce-panel-foot { background: #fafcfc; }
+.ui-commerce .ui-commerce-title { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.4; color: #182f36; }
+.ui-commerce .ui-commerce-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
+.ui-commerce .ui-commerce-section { width: 100%; min-width: 0; }
+.ui-commerce .ui-commerce-section-body { width: 100%; min-width: 0; padding-block: 11px; }
+.ui-commerce .ui-commerce-section-body > h4,
+.ui-commerce .ui-commerce-section-body > h5 { border-bottom: 1px solid #dce7e7; padding-bottom: 9px; margin-bottom: 17px; }
+.ui-commerce #kt_user_profile_aside { margin: 0 !important; }
+.ui-commerce #kt_user_profile_aside > h4 { font-size: 18px; font-weight: 600; margin: 8px 0 4px; }
+.ui-commerce #kt_user_profile_aside > label { display: block; margin: 0 0 15px; font-size: 11px; }
+.ui-commerce .ui-commerce-panel-body > h4 { margin: 5px 0 13px; }
+.ui-commerce .input-icon { position: relative; }
+.ui-commerce .input-icon > span { position: absolute; right: 11px; top: 50%; transform: translateY(-50%); color: #62777d; pointer-events: none; }
+.ui-commerce .input-icon > .form-control { padding-right: 33px; }
+.ui-commerce .image-input { display: inline-flex; align-items: flex-start; flex-wrap: wrap; gap: 8px; position: relative; max-width: 100%; }
+.ui-commerce .image-input-wrapper { width: 108px; height: 108px; background-color: #f5f7f7; background-size: cover; background-position: center; border: 1px solid #dce7e7; border-radius: 9px; }
+.ui-commerce .image-input [data-action="change"],
+.ui-commerce .image-input [data-action="cancel"] { align-self: end; min-height: 30px; padding: 6px 8px; }
+.ui-commerce .symbol { display: inline-flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 9px; background: #e9f7ef; }
+.ui-commerce .symbol-circle { border-radius: 50%; }
+.ui-commerce .symbol img { max-width: 100%; max-height: 100%; object-fit: cover; }
+.ui-commerce :is(.table-responsive, #kt_datatable) { margin-block: 12px; }
+.ui-commerce .datatable-table { min-width: 730px; }
+.ui-commerce .ui-commerce-wizard .wizard-nav { display: none; }
+.ui-commerce .ui-commerce-wizard [data-wizard-type="step-content"] { display: block; }
+.ui-commerce .ui-commerce-tabs { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 3px; margin: 12px 0 14px; border: 1px solid #dce7e7; border-radius: 8px; background: #fafcfc; }
+.ui-commerce .ui-commerce-tab { border: 0; border-radius: 6px; padding: 8px 13px; cursor: pointer; font: 600 11px Poppins, system-ui, sans-serif; background: transparent; color: #62777d; }
+.ui-commerce .ui-commerce-tab[aria-selected="true"] { color: #167451; background: #e9f7ef; }
+.ui-commerce .ui-commerce-tab i { font-size: 14px; vertical-align: middle; }
+.ui-commerce [hidden] { display: none !important; }
+.ui-commerce .ui-commerce-grid > .row { row-gap: 13px; }
+.ui-commerce .ui-commerce-grid .ui-commerce-panel { height: 100%; margin-bottom: 0; }
+.ui-commerce .modal-content { font-family: Poppins, system-ui, sans-serif; }
+.ui-commerce .modal-header h4, .ui-commerce .modal-header h5 { margin: 0; }
+.ui-commerce .modal .table-responsive { max-width: 100%; }
+.ui-commerce .alert { overflow-wrap: anywhere; }
+.ui-commerce .form-group > .row { row-gap: 9px; }
+.ui-commerce :is(.checkbox-inline, .radio-inline) label { white-space: normal; }
+.ui-commerce .btn-icon { min-width: 32px; }
+.ui-commerce .btn:focus-visible, .ui-commerce .ui-commerce-tab:focus-visible { outline: 3px solid #78caa5; outline-offset: 2px; }
+.ui-commerce-kitchen { min-height: calc(100vh - 100px); transition: background-color .5s ease; }
+body.ui-kitchen-flash .ui-commerce-kitchen { background: #fff5d9; }
+.ui-commerce-kitchen .ui-kitchen-header { display: flex; align-items: center; gap: 13px; margin-bottom: 19px; padding: 18px 20px; background: #fff; border: 1px solid #dce7e7; border-radius: 12px; }
+.ui-commerce-kitchen .ui-kitchen-header-icon { display: grid; place-items: center; flex: 0 0 41px; height: 41px; border-radius: 9px; color: #167451; background: #e9f7ef; font-size: 19px; }
+.ui-commerce-kitchen .ui-kitchen-header h1 { margin: 0; font-size: 19px; font-weight: 700; }
+.ui-commerce-kitchen .ui-kitchen-header p { margin: 3px 0 0; color: #62777d; font-size: 11px; }
+.ui-commerce-kitchen .ui-kitchen-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 15px; }
+.ui-commerce-kitchen .ui-kitchen-empty { grid-column: 1 / -1; text-align: center; padding: 42px 14px; color: #62777d; background: #fff; border: 1px solid #dce7e7; border-radius: 12px; }
+.ui-commerce-kitchen .ui-kitchen-empty-icon { display: block; margin-bottom: 13px; font-size: 35px; color: #a3b8b6; }
+.ui-commerce-kitchen .ui-kitchen-empty-title { font-size: 16px; font-weight: 600; }
+.ui-commerce-kitchen .ui-kitchen-empty-subtitle { font-size: 11px; }
+.ui-commerce-kitchen .ui-kitchen-card { display: flex; flex-direction: column; min-width: 0; overflow: hidden; background: #fff; border: 1px solid #dce7e7; border-radius: 12px; box-shadow: 0 2px 12px #1a3b3b08; }
+.ui-commerce-kitchen .ui-kitchen-card-head { position: relative; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 17px 14px 12px; border-bottom: 1px solid #dce7e7; }
+.ui-commerce-kitchen .ui-kitchen-card-accent { position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: #1f9866; }
+.ui-commerce-kitchen .ui-kitchen-card-title { margin: 0 0 4px; font-size: 14px; font-weight: 700; }
+.ui-commerce-kitchen .ui-kitchen-card-subtitle { margin: 0; color: #62777d; font-size: 10px; overflow-wrap: anywhere; }
+.ui-commerce-kitchen .ui-kitchen-card-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex: 0 0 auto; }
+.ui-commerce-kitchen .ui-kitchen-time { padding: 3px 6px; border-radius: 6px; background: #e9f7ef; color: #167451; font-size: 10px; font-weight: 600; }
+.ui-commerce-kitchen .ui-kitchen-print-button { min-width: 28px; min-height: 28px; padding: 4px; border: 1px solid #dce7e7; border-radius: 6px; color: #182f36; background: #fff; cursor: pointer; }
+.ui-commerce-kitchen .ui-kitchen-card-body { flex: 1; min-width: 0; }
+.ui-commerce-kitchen .ui-kitchen-items { padding: 14px; }
+.ui-commerce-kitchen .ui-kitchen-item { padding: 0 0 11px; margin-bottom: 11px; border-bottom: 1px solid #e6eeee; }
+.ui-commerce-kitchen .ui-kitchen-item:last-child { padding-bottom: 0; margin-bottom: 0; border: 0; }
+.ui-commerce-kitchen .ui-kitchen-item-line { display: flex; align-items: flex-start; gap: 8px; }
+.ui-commerce-kitchen .ui-kitchen-quantity { flex: 0 0 auto; padding: 4px 6px; border-radius: 6px; color: #167451; background: #e9f7ef; font-size: 10px; font-weight: 700; }
+.ui-commerce-kitchen .ui-kitchen-item-title { margin: 0; font-size: 11px; font-weight: 600; text-transform: uppercase; overflow-wrap: anywhere; }
+.ui-commerce-kitchen .ui-kitchen-size { display: inline-block; margin-left: 4px; padding: 2px 5px; border-radius: 5px; background: #eff4f3; color: #62777d; font-size: 9px; }
+.ui-commerce-kitchen .ui-kitchen-addons { margin: 7px 0 0 28px; padding: 0; list-style: none; }
+.ui-commerce-kitchen .ui-kitchen-addon { margin-bottom: 4px; color: #62777d; font-size: 10px; }
+.ui-commerce-kitchen .ui-kitchen-addon i { color: #1f9866; }
+.ui-commerce-kitchen .ui-kitchen-observation { margin: 8px 0 0 28px; padding: 8px; border: 1px solid #f0ccd0; border-radius: 7px; color: #a53e4c; background: #fff5f5; font-size: 10px; font-weight: 600; overflow-wrap: anywhere; }
+.ui-commerce-kitchen .ui-kitchen-card-foot { padding: 12px 14px; border-top: 1px solid #dce7e7; background: #fafcfc; }
+.ui-commerce-kitchen .ui-kitchen-done { width: 100%; min-height: 35px; padding: 7px 10px; border: 1px solid #1f9866; border-radius: 7px; color: #fff; background: #1f9866; cursor: pointer; font: 600 11px Poppins, system-ui, sans-serif; }
+.ui-commerce-kitchen .ui-kitchen-done:hover { background: #167451; }
+.ui-commerce-kitchen :is(.ui-kitchen-done, .ui-kitchen-print-button):focus-visible { outline: 3px solid #78caa5; outline-offset: 2px; }
+@media (max-width: 1300px) { .ui-commerce-kitchen .ui-kitchen-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 900px) { .ui-commerce-kitchen .ui-kitchen-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .ui-commerce-kitchen .ui-kitchen-grid { grid-template-columns: 1fr; } .ui-commerce-kitchen .ui-kitchen-header { padding: 14px; } }
+@media print { body:has(.ui-commerce-kitchen) * { visibility: hidden; } body:has(.ui-commerce-kitchen) #area-impressao, body:has(.ui-commerce-kitchen) #area-impressao * { visibility: visible; } body:has(.ui-commerce-kitchen) #area-impressao { position: absolute; top: 0; left: 0; width: 100%; } }
+@media (max-width: 991px) {
+  .ui-commerce .ui-commerce-panel-body { padding: 14px; }
+  .ui-commerce .ui-commerce-panel-head { align-items: flex-start; }
+}
+@media (max-width: 640px) {
+  .ui-commerce .ui-commerce-tabs { width: 100%; }
+  .ui-commerce .ui-commerce-tab { flex: 1; }
+  .ui-commerce .ui-commerce-panel-foot .row { width: 100%; }
+  .ui-commerce .ui-commerce-panel-foot .btn { width: 100%; }
+  .ui-commerce .image-input-wrapper { width: 88px; height: 88px; }
+}

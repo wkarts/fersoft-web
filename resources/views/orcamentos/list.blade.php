@@ -1,7 +1,12 @@
 @extends('default.layout')
-@section('content')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 
-<div class="card card-custom gutter-b">
+@section('content')
+<header class="fer-page__heading"><h1>Orçamentos</h1></header>
+
+<div class="card card-custom gutter-b fer-page fer-list">
 	<div class="card-body">
 
 		<div class="" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
@@ -11,7 +16,7 @@
 			@endif
 
 			<input type="hidden" id="_token" value="{{ csrf_token() }}">
-			<form class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft" method="get" action="/orcamentoVenda/filtro" id="form-pesquisa">
+			<form class="fer-filter @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft" method="get" action="/orcamentoVenda/filtro" id="form-pesquisa">
 				<div class="row align-items-center">
 					<div class="form-group col-lg-2 col-sm-6">
 						<label class="col-form-label">Tipo pesquisa</label>
@@ -113,7 +118,7 @@
 		<div class="row @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">
 			<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
 
-				<div class="wizard wizard-3" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
+				<div class="wizard wizard-3 fer-results" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
 					<!--begin: Wizard Nav-->
 
 					<div class="wizard-nav">
@@ -514,7 +519,7 @@
 
 
 <div class="modal fade" id="modal-whatsApp" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="modal-dialog modal-lg fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">WHATSAPP</h5>
@@ -551,7 +556,7 @@
 </div>
 
 <div class="modal fade" id="modal5" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="modal-dialog modal-lg fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">ENVIAR EMAIL</h5>
@@ -585,7 +590,7 @@
 </div>
 
 <div class="modal fade" id="modal5-grid" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="modal-dialog modal-lg fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">ENVIAR EMAIL</h5>

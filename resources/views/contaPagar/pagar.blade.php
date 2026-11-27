@@ -1,11 +1,16 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 @section('content')
+<header class="fer-page__heading"><h1>Baixa de Conta Financeira</h1></header>
 <div class="container mt-5">
     <form method="post" action="/contasPagar/pagar" id="form-baixa">
         @csrf
         <input type="hidden" name="id" value="{{$conta->id}}">
 
-        <div class="card shadow-sm border-0">
+        <div class="card shadow-sm border-0 fer-page fer-detail">
             <div class="card-header bg-dark text-white d-flex align-items-center">
                 <i class="la la-money-bill-wave icon-lg mr-2"></i>
                 <h4 class="card-title my-2">Baixa de Conta Financeira</h4>

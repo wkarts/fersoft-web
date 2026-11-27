@@ -1,7 +1,18 @@
 @extends('default.layout')
+@section('css')
+@unless(config('ui_theme.active', false))
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-commerce.css') }}?v={{ filemtime(public_path('css/ui-commerce.css')) }}">
+@endunless
+@endsection
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-commerce.css') }}?v={{ filemtime(public_path('css/ui-commerce.css')) }}">
+@endpush
 @section('content')
-<div class=" d-flex flex-column flex-column-fluid" id="kt_content">
-	<div class="card card-custom gutter-b example example-compact">
+<div class="ui-admin ui-commerce ui-commerce-produtoEcommerce">
+<div class="d-flex flex-column flex-column-fluid" id="kt_content">
+	<div class="ui-admin-panel ui-commerce-panel gutter-b">
 		<div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 			<div class="col-lg-12">
 				<br>
@@ -15,18 +26,18 @@
 					<input type="hidden" id="combinacoes" value="{{old('combinacoes')}}" name="combinacoes">
 					@endif
 
-					<div class="card card-custom gutter-b example example-compact">
-						<div class="card-header">
+					<div class="ui-admin-panel ui-commerce-panel gutter-b">
+						<div class="ui-admin-panel-head ui-commerce-panel-head">
 
-							<h3 class="card-title">{{isset($produto) ? 'Editar' : 'Novo'}} Produto de Ecommerce</h3>
+							<h3 class="ui-commerce-title">{{isset($produto) ? 'Editar' : 'Novo'}} Produto de Ecommerce</h3>
 						</div>
 					</div>
 					@csrf
 
 					<div class="row">
 						<div class="col-xl-12">
-							<div class="kt-section kt-section--first">
-								<div class="kt-section__body">
+							<div class="ui-commerce-section">
+								<div class="ui-commerce-section-body">
 									<p class="text-danger">>> O produto de ecommerce depende do produto principal, isso é necessário para baixa de estoque e emissão fiscal!</p>
 									<div class="row">
 										<div @if(old('produto') != "") style="display: none" @endif id="ref-prod" class="form-group validated col-sm-7 col-lg-6 col-10">
@@ -315,7 +326,7 @@
 
 						</div>
 					</div>
-					<div class="card-footer">
+					<div class="ui-admin-panel-foot ui-commerce-panel-foot">
 
 						<div class="row">
 							<div class="col-xl-2">
@@ -408,7 +419,8 @@
 		</div>
 	</div>
 
-	@section('javascript')
+	</div>
+@section('javascript')
 	<script type="text/javascript">
 
 		var PRODUTONOVO = false;

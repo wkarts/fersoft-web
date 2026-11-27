@@ -1,10 +1,13 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-fiscal.css') }}?v={{ filemtime(public_path('css/ui-fiscal.css')) }}">
+@endpush
 @section('content')
-    <div class="card card-custom gutter-b">
-        <div class="card-body">
+    <div class="fiscal-page fiscal-page--sped_nfce_consolidados-list">
+        <div class="fiscal-page__content card-body">
 
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h3 class="mb-0">{{ $title ?? 'SPED NFC-e Consolidado' }}</h3>
+                <h3 class="mb-0 fiscal-page__title">{{ $title ?? 'SPED NFC-e Consolidado' }}</h3>
                 <a href="{{ $newItemUrl }}" class="btn btn-success">Novo Registro</a>
             </div>
 

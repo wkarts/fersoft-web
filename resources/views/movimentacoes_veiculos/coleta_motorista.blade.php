@@ -85,8 +85,9 @@
             font-size: 0.9rem;
         }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/ui-standalone-forms.css') }}?v={{ filemtime(public_path('css/ui-standalone-forms.css')) }}">
 </head>
-<body>
+<body class="fer-standalone-form">
 
 @php
     $itensLancados = \App\Models\MovimentacaoDestinoItem::with('produto')

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
+	<meta charset="UTF-8">
 	<title>Resposta de Cotação</title>
 	<meta name = "viewport" content = "width = device-width, initial-scale = 1">      
 
@@ -9,9 +10,10 @@
 
 	<!-- Scripts -->
 	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-KK94CHFLLe+nY2dmCWGMq91rCGa5gtU4mk92HdvYe+M/SXH301p5ILy+dN9+nJOZ" crossorigin="anonymous">
+	<link rel="stylesheet" href="{{ asset('css/ui-standalone-forms.css') }}?v={{ filemtime(public_path('css/ui-standalone-forms.css')) }}">
 
 </head>
-<body>
+<body class="fer-standalone-form fer-quote-response">
 	<nav class="navbar navbar-expand-md navbar-light bg-white shadow-sm">
 		<div class="container">
 			<a class="navbar-brand">
@@ -72,23 +74,23 @@
 
 									@foreach($cotacao->itens as $linha => $p)
 									<tr>
-										<input type="hidden" class="" name="item_id[]" value="{{ $p->id }}">
-										<td>
+										<td data-label="Produto">
+											<input type="hidden" name="item_id[]" value="{{ $p->id }}">
 											<input disabled type="tel" class="form-control" name="produto_nome[]" value="{{ $p->produto->nome }}">
 										</td>
-										<td id="quantity">
+										<td id="quantity" data-label="Quantidade">
 											<input required readonly type="tel" class="form-control moeda" value="{{ $p->quantidade }}" name="quantidade[]">
 										</td>
 
-										<td>
+										<td data-label="Valor unitário">
 											<input required type="tel" class="form-control moeda value" id="value" name="valor[]">
 										</td>
 
-										<td>
+										<td data-label="Observação">
 											<input type="text" name="observacao_item[]" class="form-control">
 										</td>
 
-										<td>
+										<td data-label="Subtotal">
 											<input required readonly type="text" name="sub_total[]" class="form-control subtotal">
 										</td>
 									</tr>

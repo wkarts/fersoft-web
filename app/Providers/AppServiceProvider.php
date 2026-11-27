@@ -575,6 +575,7 @@ class AppServiceProvider extends ServiceProvider
             ];
 
             if(in_array($uri, $rotaSuper)) return 'SUPER';
+            if($uri === 'fiscal-classificacoes') return 'ClassTrib';
             if(in_array($uri, $rotaDeCadastros)) return 'Cadastros';
             if(in_array($uri, $rotaDeEntradas)) return 'Entradas';
             if(in_array($uri, $rotaDeGestaoPessoal)) return 'Gestão Pessoal';

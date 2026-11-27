@@ -1,10 +1,14 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 @section('content')
 
     <!-- Dependências de estilo do Select2 -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
-    <div class="card card-custom gutter-b">
+    <div class="fer-extra fer-extra--support fer-extra--manutencoes card card-custom gutter-b">
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-6 flex-wrap">
                 <div>
@@ -183,7 +187,7 @@
     </div>
 
     {{-- MODAL NOVO ALERTA / QUEBRA --}}
-    <div class="modal fade" id="modalNovoAlerta" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal fer-extra-modal fade" id="modalNovoAlerta" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <form method="post" action="{{ route('manutencao.alertas.salvar') }}">

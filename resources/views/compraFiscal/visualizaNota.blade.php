@@ -1,4 +1,7 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-operations.css') }}?v={{ filemtime(public_path('css/ui-operations.css')) }}">
+@endpush
 @section('content')
     <style type="text/css">
         #focus-codigo:hover { cursor: pointer }
@@ -20,12 +23,12 @@
 
     <div class="d-flex flex-column flex-column-fluid" id="kt_content">
         <div id="content" style="display: block">
-            <div class="container-fluid @if(env('ANIMACAO')) animate__animated @endif animate__fadeIn">
+            <div class="operations-page operations-page--purchase container-fluid @if(env('ANIMACAO')) animate__animated @endif animate__fadeIn">
 
                 <input type="hidden" name="id" value="{{{ isset($cliente) ? $cliente->id : 0 }}}">
                 @csrf
 
-                <div class="card card-custom gutter-b shadow-sm border-0 mt-6">
+                <div class="card operations-panel card-custom gutter-b shadow-sm border-0 mt-6">
                     <div class="card-body p-6">
                         <div class="row align-items-center mb-6">
                             <div class="col-md-8">
@@ -106,7 +109,7 @@
                     </div>
                 </div>
 
-                <div class="card card-custom gutter-b shadow-sm border-0">
+                <div class="card operations-panel card-custom gutter-b shadow-sm border-0">
                     <div class="card-header border-0 pt-5">
                         <h3 class="card-title font-weight-bolder text-dark">Informações Complementares da NF-e</h3>
                     </div>
@@ -115,7 +118,7 @@
                     </div>
                 </div>
 
-                <div class="card card-custom gutter-b shadow-sm border-0">
+                <div class="card operations-panel card-custom gutter-b shadow-sm border-0">
                     <div class="card-header border-0 pt-5">
                         <h3 class="card-title font-weight-bolder text-dark">
                             Itens da NF-e <span class="text-muted ml-2 font-size-sm">({{sizeof($itens)}} itens encontrados)</span>
@@ -255,7 +258,7 @@
                     </div>
                 </div>
 
-                <div class="card card-custom gutter-b shadow-sm border-0">
+                <div class="card operations-panel card-custom gutter-b shadow-sm border-0">
                     <div class="card-header border-0 pt-5">
                         <h3 class="card-title font-weight-bolder text-dark">Financeiro e Rateio por Veículo</h3>
                     </div>
@@ -356,7 +359,7 @@
                 </div>
 
                 <input type="hidden" id="total" value="{{$dadosNf['vProd']}}">
-                <div class="card card-custom gutter-b shadow-sm border-0">
+                <div class="card operations-panel card-custom gutter-b shadow-sm border-0">
                     <div class="card-body">
                         <div class="row align-items-center">
                             <div class="col-xl-3 border-right">
@@ -416,7 +419,7 @@
 
     <input type="hidden" id="subs" value="{{json_encode($subs)}}">
 
-    <div class="modal fade" id="modal1" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+    <div class="modal fade operations-dialog" id="modal1" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
         <div class="modal-dialog modal-xl" role="document">
             <div class="modal-content">
                 <div class="modal-header">
@@ -800,7 +803,7 @@
         </div>
     </div>
 
-    <div class="modal fade" id="modal2" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+    <div class="modal fade operations-dialog" id="modal2" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header">
@@ -838,7 +841,7 @@
         </div>
     </div>
 
-    <div class="modal fade" id="modal-link" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+    <div class="modal fade operations-dialog" id="modal-link" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header">

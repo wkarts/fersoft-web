@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 
 @section('content')
-<div class="container-fluid">
+<div class="fer-extra fer-extra--support fer-extra--portaria container-fluid">
     <div class="row mb-4">
         <div class="col-6">
             <h2 class="page-title">Histórico de Portaria</h2>
@@ -119,7 +123,7 @@
 </div>
 
 <!-- MODAL DE BLOQUEIO -->
-<div class="modal fade" id="modalBloqueio" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal fer-extra-modal fade" id="modalBloqueio" tabindex="-1" role="dialog" aria-hidden="true">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header bg-danger text-white">

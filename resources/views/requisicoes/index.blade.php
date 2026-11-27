@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 
 @section('content')
-<div class="container-fluid">
+<div class="fer-extra fer-extra--support fer-extra--requisicoes container-fluid">
 
     @if(session('error'))
         <div class="alert alert-danger">{{ session('error') }}</div>
@@ -109,7 +113,7 @@
 </div>
 
 {{-- MODAL DE SENHA --}}
-<div class="modal fade" id="modalSenhaExclusao" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal fer-extra-modal fade" id="modalSenhaExclusao" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-sm" role="document">
         <div class="modal-content">
             <form id="formExcluirRequisicao" method="POST">

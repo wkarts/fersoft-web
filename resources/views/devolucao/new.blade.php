@@ -1,8 +1,12 @@
 {{-- resources/views/devolucao/new.blade.php --}}
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 
 @section('content')
-    <style>
+    <header class="fer-page__heading"><h1>Importação de XML da NF-e</h1></header>
+<style>
         .btn-file {
             position: relative;
             overflow: hidden;
@@ -43,7 +47,7 @@
             {{-- Guarda em JS o valor atual da seleção para ser reenviado, se necessário --}}
             <input type="hidden" name="destinoPadrao" id="destinoPadrao" value="{{ $destinoPadrao }}">
 
-            <div class="card shadow-sm">
+            <div class="fer-page fer-operational fer-form card shadow-sm">
                 <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0 font-weight-bold">Importação de XML da NF-e</h5>
                     <button type="button" class="btn btn-light-primary font-weight-bold btn-sm" data-toggle="modal" data-target="#modal-manual-devolucao">
@@ -395,7 +399,7 @@
         });
     </script>
 <div class="modal fade" id="modal-manual-devolucao" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-    <div class="modal-dialog modal-xl" role="document">
+    <div class="fer-dialog modal-dialog modal-xl" role="document">
         <div class="modal-content">
             <div class="modal-header bg-light">
                 <h5 class="modal-title text-primary font-weight-bold">

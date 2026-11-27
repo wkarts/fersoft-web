@@ -7,12 +7,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Poppins:300,400,500,600,700|Roboto:300,400,500,600,700">
+    @unless(config('ui_theme.active', false))
     <link href="/metronic/css/fullcalendar.bundle.css" rel="stylesheet" type="text/css" />
+    @endunless
+    @unless(config('ui_theme.active', false))
     <link href="/metronic/css/wizard.css" rel="stylesheet" type="text/css" />
+    @endunless
     <link href="/css/style.css" rel="stylesheet" type="text/css" />
+    @unless(config('ui_theme.active', false))
     <link href="/metronic/css/plugins.bundle.css" rel="stylesheet" type="text/css" />
+    @endunless
+    @unless(config('ui_theme.active', false))
     <link href="/metronic/css/prismjs.bundle.css" rel="stylesheet" type="text/css" />
+    @endunless
+    @unless(config('ui_theme.active', false))
     <link href="/metronic/css/style.bundle.css" rel="stylesheet" type="text/css" />
+    @endunless
 
     <!-- Styles adicionais para caixa memo -->
     <style>
@@ -65,7 +75,10 @@
     @include('layouts.tracking')
 
     <!-- Configurações Adicionais -->
+    @unless(config('ui_theme.active', false))
     <script>var HOST_URL = "/metronic/theme/html/tools/preview";</script>
+    @endunless
+@unless(config('ui_theme.active', false))
     <script>
         var KTAppSettings = {
             "breakpoints": {
@@ -126,8 +139,12 @@
             "font-family": "Poppins"
         };
     </script>
+@endunless
+    @if(config('ui_theme.active', false))
+    <link rel="stylesheet" href="{{ asset('css/ui-auth.css') }}?v={{ filemtime(public_path('css/ui-auth.css')) }}">
+    @endif
 </head>
-<body id="kt_body" class="header-fixed header-mobile-fixed subheader-enabled subheader-fixed aside-enabled aside-fixed aside-minimize-hoverable page-loading">
+<body id="kt_body" class="header-fixed header-mobile-fixed subheader-enabled subheader-fixed aside-enabled aside-fixed aside-minimize-hoverable page-loading @if(config('ui_theme.active', false)) fer-auth fer-auth--error @endif">
 <div class="d-flex flex-column flex-root">
     <div class="d-flex flex-row-fluid flex-column bgi-size-cover bgi-position-center bgi-no-repeat p-10 p-sm-30">
         <h1 class="font-weight-boldest text-dark-75 mt-15" style="font-size: 3rem">Erro de Banco de Dados</h1>
@@ -148,14 +165,37 @@
     }
 </script>
 
+@if(config('ui_theme.active', false))
+<script src="/login3/js/jquery.min.js"></script>
+<script src="/login3/js/popper.js"></script>
+<script src="/login3/js/bootstrap.min.js"></script>
+@endif
+@unless(config('ui_theme.active', false))
 <script src="/metronic/js/plugins.bundle.js"></script>
+@endunless
+@unless(config('ui_theme.active', false))
 <script src="/metronic/js/prismjs.bundle.js"></script>
+@endunless
+@unless(config('ui_theme.active', false))
 <script src="/metronic/js/scripts.bundle.js"></script>
+@endunless
+@unless(config('ui_theme.active', false))
 <script src="/metronic/js/fullcalendar.bundle.js"></script>
+@endunless
+@unless(config('ui_theme.active', false))
 <script src="/metronic/js/wizard.js"></script>
+@endunless
+@unless(config('ui_theme.active', false))
 <script src="/metronic/js/user.js"></script>
+@endunless
+@unless(config('ui_theme.active', false))
 <script src="/js/jquery.mask.min.js"></script>
+@endunless
+@unless(config('ui_theme.active', false))
 <script src="/js/mascaras.js"></script>
+@endunless
+@unless(config('ui_theme.active', false))
 <script src="/metronic/js/select2.js"></script>
+@endunless
 </body>
 </html>

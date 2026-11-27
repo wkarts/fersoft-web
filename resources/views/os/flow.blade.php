@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
 
-	<div class="row">
+	<header class="fer-page__heading"><h1>Lista de OS</h1></header>
+<div class="row fer-page fer-operational fer-list fer-legacy-grid">
 		<div class="col s12">
 
 			<h4>Lista de OS</h4>
@@ -12,7 +16,7 @@
 			</div>
 			@endif
 
-			<form method="get" action="/order/cashFlowFilter" class="row col s6">
+			<form method="get" action="/order/cashFlowFilter" class="fer-filter row col s6">
 				<div class="input-field col s4">
 			          <input id="date_start" name="date_start" type="text" class="datepicker">
 			          <label for="date_start">Data Inicio</label>
@@ -26,7 +30,7 @@
 			    </button>
 			</form>
 
-			<div class="row">
+			<div class="row fer-results">
 				<div class="col s12">
 					<label>Numero de registros: {{count($orders)}}</label>					
 				</div>

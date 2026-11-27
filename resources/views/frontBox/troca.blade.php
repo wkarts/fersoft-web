@@ -1,8 +1,12 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-pos-pages.css') }}?v={{ filemtime(public_path('css/ui-pos-pages.css')) }}">
+@endpush
+
 @section('content')
 
 
-<div class="card card-custom gutter-b">
+<div class="fer-pos-page fer-pos-page--troca fer-pos-page--canvas card card-custom gutter-b">
 
 
 	<div class="card-body">
@@ -172,7 +176,7 @@
 	</div>
 </div>
 
-<div class="modal fade" id="modal" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fer-pos-modal fade" id="modal" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-lg" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -201,7 +205,7 @@
 	</div>
 </div>
 
-<div class="modal fade" id="modal3" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fer-pos-modal fade" id="modal3" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-sm" role="document">
 		<div class="modal-content">
 			<div class="modal-header">

@@ -1,6 +1,11 @@
 @extends('default.layout', ['title' => 'Adiantamentos'])
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 
 @section('content')
+<header class="fer-page__heading"><h1>Adiantamentos</h1></header>
     <style type="text/css">
         .select2-container--open { z-index: 9999999 !important; }
 
@@ -23,7 +28,7 @@
         }
     </style>
 
-    <div class="container-fluid">
+    <div class="container-fluid fer-page fer-advance">
         <div class="row">
             <div class="col-md-12">
                 {{-- ID adicionado para a função de impressão --}}
@@ -130,7 +135,7 @@
 
     {{-- Modal Novo Adiantamento - Exatamente como no seu arquivo funcional --}}
     <div class="modal fade" id="modalAdiantamento" role="dialog" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-lg fer-dialog">
             <div class="modal-content">
                 <form action="{{ route('adiantamentos.store') }}" method="POST">
                     @csrf
@@ -192,7 +197,7 @@
 
 <!-- MODAL DE DEVOLUÇÃO -->
     <div class="modal fade" id="modalDevolucao" role="dialog" aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog fer-dialog">
             <div class="modal-content">
                 <form action="{{ route('adiantamentos.devolver') }}" method="POST">
                     @csrf

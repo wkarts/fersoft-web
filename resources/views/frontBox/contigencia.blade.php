@@ -1,4 +1,8 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-pos-pages.css') }}?v={{ filemtime(public_path('css/ui-pos-pages.css')) }}">
+@endpush
+
 
 @section('css')
     <style type="text/css">
@@ -20,7 +24,7 @@
 @endsection
 
 @section('content')
-    <div class="card card-custom gutter-b">
+    <div class="fer-pos-page fer-pos-page--contigencia card card-custom gutter-b">
         <div class="card-body">
             <form method="get" class="row">
                 <div class="col-md-2">

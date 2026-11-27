@@ -1,11 +1,15 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-pos-pages.css') }}?v={{ filemtime(public_path('css/ui-pos-pages.css')) }}">
+@endpush
+
 @section('content')
 <style type="text/css">
 	.btn{
 		margin-left: 5px;
 	}
 </style>
-<div class="card card-custom gutter-b">
+<div class="fer-pos-page fer-pos-page--alerta card card-custom gutter-b">
 
 	<div class="card-body">
 		<h5>Para acessar o PDV é necessario ter cadastrado:</h5>

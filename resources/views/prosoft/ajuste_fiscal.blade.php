@@ -1,5 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-admin-modules.css') }}?v={{ filemtime(public_path('css/ui-admin-modules.css')) }}">
+@endpush
 @section('content')
+<div class="document-fiscal-page admin-page admin-page--prosoft">
     <div class="d-flex flex-column flex-column-fluid" id="kt_content">
         <div class="card card-custom gutter-b example example-compact">
             <div class="card-header bg-primary text-white">
@@ -172,4 +177,5 @@
             </div>
         </div>
     </div>
+</div>
 @endsection

@@ -1,8 +1,13 @@
 
 @extends('default.layout')
-@section('content')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 
-<div class="card card-custom gutter-b">
+@section('content')
+<header class="fer-page__heading"><h1>Fluxo de Caixa</h1></header>
+
+<div class="card card-custom gutter-b fer-page fer-detail">
 
 
 	<div class="card-body">
@@ -17,7 +22,7 @@
 
 		<div class="" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
 
-			<form class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft" method="get" action="/fluxoCaixa/filtro">
+			<form class="fer-filter @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft" method="get" action="/fluxoCaixa/filtro">
 				<div class="row align-items-center">
 
 					<div class="form-group col-lg-2 col-md-4 col-sm-6">

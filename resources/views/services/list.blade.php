@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 @section('content')
 
-	<div class="row">
+	<div class="fer-extra fer-extra--support fer-extra--services row">
 		<div class="col s12">
 
 			<h4>Lista de Serviços</h4>

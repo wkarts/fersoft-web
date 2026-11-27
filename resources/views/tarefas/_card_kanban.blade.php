@@ -1,28 +1,4 @@
-<style>
-    .kb-card {
-        background-color: #fff;
-        border-radius: 8px;
-        border: 1px solid #ddd;
-        transition: all 0.2s ease-in-out;
-        cursor: pointer;
-    }
-    .kb-card:hover {
-        box-shadow: 0 8px 15px rgba(0,0,0,0.1) !important;
-        transform: translateY(-3px);
-    }
-    .avatar-circle, .avatar-image {
-        width: 34px;
-        height: 34px;
-        border-radius: 50%;
-        text-align: center;
-        font-size: 13px;
-        line-height: 34px;
-        font-weight: bold;
-        text-transform: uppercase;
-        object-fit: cover;
-    }
-    .avatar-circle { color: #fff; }
-</style>
+
 
 @php
     $estaAtrasadaCard = false;
@@ -37,11 +13,11 @@
 <div id="tarefa-{{ $tarefa->id }}"
      data-id="{{ $tarefa->id }}"
      data-atrasada="{{ $estaAtrasadaCard ? 'true' : 'false' }}"
-     class="card kb-card mb-3 shadow-sm border-0 border-start border-4
+     class="ui-admin-kanban-card kb-card mb-3 shadow-sm border-0 border-start border-4
     {{ $tarefa->prioridade == 'Urgente' ? 'border-danger' : ($tarefa->prioridade == 'Alta' ? 'border-warning' : 'border-primary') }}">
 
 
-    <div class="card-body p-3">
+    <div class="ui-admin-panel-body p-3">
         <h6 class="card-title fw-bold mb-1 text-dark text-truncate" title="{{ $tarefa->titulo }}">
             {{ $tarefa->titulo }}
         </h6>

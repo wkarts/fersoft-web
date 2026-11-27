@@ -1,4 +1,8 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 
 @section('content')
 <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -20,7 +24,7 @@
     .adp-camera-page .camera-log { min-height:34px; max-height:70px; overflow:auto; font-size:11px; background:#f8fafc; border-radius:8px; padding:8px; color:#4b5563; }
 </style>
 
-<div class="container-fluid adp-camera-page">
+<div class="fer-extra fer-extra--people fer-extra--adp_cameras container-fluid adp-camera-page">
     <div class="d-flex justify-content-between align-items-center flex-wrap mb-4">
         <div>
             <h4 class="mb-0">Câmeras ADP</h4>

@@ -1,16 +1,19 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 
 @section('content')
     <div class="d-flex flex-column flex-column-fluid" id="kt_content">
-        <div class="container mt-5">
+        <div class="container mt-5 fer-report-screen">
 
-            <div class="card card-custom mb-5 shadow-sm" style="border-radius: 10px;">
+            <div class="fer-panel card card-custom mb-5 shadow-sm" style="border-radius: 10px;">
                 <div class="card-body py-4 d-flex justify-content-between align-items-center flex-wrap">
                     <h3 class="text-dark font-weight-bold m-0 mb-3 mb-md-0">
                         <i class="fas fa-file-invoice-dollar text-primary mr-2"></i> {{ $title }}
                     </h3>
 
-                    <form action="{{ url()->current() }}" method="GET" class="d-flex align-items-center flex-wrap">
+                    <form action="{{ url()->current() }}" method="GET" class="fer-report-filter d-flex align-items-center flex-wrap">
                         <label class="mr-2 font-weight-bold mb-0">Período:</label>
                         <input type="date" name="data_inicio" value="{{ $dataInicio }}" class="form-control mr-2 mb-2 mb-md-0" style="width: 150px;" required>
                         <input type="date" name="data_fim" value="{{ $dataFim }}" class="form-control mr-2 mb-2 mb-md-0" style="width: 150px;" required>

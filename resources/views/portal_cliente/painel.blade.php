@@ -164,8 +164,9 @@
         .epi-checkbox-group .form-check-input { width: 1.2rem; height: 1.2rem; margin-left: -2rem; }
         .epi-checkbox-group .form-check-label { padding-top: 0.1rem; font-size: 0.9rem; }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/ui-standalone-forms.css') }}?v={{ filemtime(public_path('css/ui-standalone-forms.css')) }}">
 </head>
-<body>
+<body class="fer-standalone-form fer-portal-panel">
 
 <?php
 $listaFuncionarios = $funcionarios ?? [];
@@ -366,7 +367,7 @@ $exibeRastreabilidade = isset($cliente) && ((int)($cliente->exige_rastreabilidad
                                     <tbody>
                                     @forelse($medicoes ?? [] as $med)
                                         <tr>
-                                            <td>
+                                            <td data-label="Contrato">
                                                 <strong class="text-dark">{{ $med->numero_contrato ?? 'Avulso' }}</strong><br>
                                                 @if(isset($med->contrato_eng_id) && $med->contrato_eng_id)
                                                     <a href="/portal-cliente/contrato/imprimir/{{ $med->contrato_eng_id }}" target="_blank" class="badge bg-secondary text-decoration-none mt-1 shadow-sm" title="Imprimir Contrato Original">
@@ -374,11 +375,11 @@ $exibeRastreabilidade = isset($cliente) && ((int)($cliente->exige_rastreabilidad
                                                     </a>
                                                 @endif
                                             </td>
-                                            <td>{{ \Carbon\Carbon::parse($med->data_faturamento)->format('d/m/Y') }}</td>
-                                            <td class="fw-bold text-success">R$ {{ number_format($med->valor_liquido, 2, ',', '.') }}</td>
+                                            <td data-label="Faturamento">{{ \Carbon\Carbon::parse($med->data_faturamento)->format('d/m/Y') }}</td>
+                                            <td data-label="Valor (R$)" class="fw-bold text-success">R$ {{ number_format($med->valor_liquido, 2, ',', '.') }}</td>
 
                                             <!-- STATUS INTELIGENTE -->
-                                            <td>
+                                            <td data-label="Status (Aprovação / NF)">
                                                 @if($med->status_final_portal == 'pendente')
                                                     <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i> Aguardando Aprovação</span>
                                                 @elseif($med->status_final_portal == 'aguardando_nfse')
@@ -391,7 +392,7 @@ $exibeRastreabilidade = isset($cliente) && ((int)($cliente->exige_rastreabilidad
                                                 @endif
                                             </td>
 
-                                            <td>
+                                            <td data-label="Financeiro">
                                                 @if(strtolower($med->status_financeiro) == 'recebido' || strtolower($med->status_financeiro) == 'pago')
                                                     <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i> Pago</span>
                                                 @else
@@ -399,7 +400,7 @@ $exibeRastreabilidade = isset($cliente) && ((int)($cliente->exige_rastreabilidad
                                                 @endif
                                             </td>
 
-                                            <td class="text-center">
+                                            <td data-label="Ações / Documentos" class="text-center">
                                                 @if($med->status_final_portal == 'pendente')
                                                     <button class="btn btn-sm btn-success px-2 py-1 me-1" onclick="aprovarMedicao({{ $med->id }})" title="Aprovar Medição">
                                                         <i class="fas fa-check"></i> Aprovar
@@ -536,10 +537,10 @@ $exibeRastreabilidade = isset($cliente) && ((int)($cliente->exige_rastreabilidad
                                                                     @endphp
                                                                     @foreach($resumoList as $item)
                                                                         <tr>
-                                                                            <td><strong>{{ $item['nome'] }}</strong></td>
-                                                                            <td class="text-end text-primary fw-bold">{{ number_format($item['entrada'], 2, ',', '.') }} kg</td>
-                                                                            <td class="text-end text-danger fw-bold">{{ number_format($item['saida'], 2, ',', '.') }} kg</td>
-                                                                            <td class="text-end text-success fw-bold">{{ number_format($item['saldo'], 2, ',', '.') }} kg</td>
+                                                                            <td data-label="Produto Acabado"><strong>{{ $item['nome'] }}</strong></td>
+                                                                            <td data-label="Entrada Total (Produzido)" class="text-end text-primary fw-bold">{{ number_format($item['entrada'], 2, ',', '.') }} kg</td>
+                                                                            <td data-label="Saída Total (Expedido via PEPS)" class="text-end text-danger fw-bold">{{ number_format($item['saida'], 2, ',', '.') }} kg</td>
+                                                                            <td data-label="Saldo Atual em Estoque" class="text-end text-success fw-bold">{{ number_format($item['saldo'], 2, ',', '.') }} kg</td>
                                                                         </tr>
                                                                     @endforeach
                                                                     </tbody>
@@ -563,17 +564,17 @@ $exibeRastreabilidade = isset($cliente) && ((int)($cliente->exige_rastreabilidad
                                                                     <tbody>
                                                                     @forelse($lote->ticketsSaida as $ticket)
                                                                         <tr>
-                                                                            <td>{{ $ticket->created_at->format('d/m/Y H:i') }}</td>
-                                                                            <td>{{ optional($ticket->produto)->nome }}</td>
-                                                                            <td class="text-end text-danger fw-bold">{{ number_format($ticket->peso - ($ticket->peso_bag ?? 0), 2, ',', '.') }} kg</td>
-                                                                            <td>
+                                                                            <td data-label="Data / Hora">{{ $ticket->created_at->format('d/m/Y H:i') }}</td>
+                                                                            <td data-label="Produto Expedido">{{ optional($ticket->produto)->nome }}</td>
+                                                                            <td data-label="Quantidade Total" class="text-end text-danger fw-bold">{{ number_format($ticket->peso - ($ticket->peso_bag ?? 0), 2, ',', '.') }} kg</td>
+                                                                            <td data-label="Destino / Venda">
                                                                                 @if(optional($ticket->pesagem)->venda_id)
                                                                                     Venda #{{ $ticket->pesagem->venda_id }} ({{ optional(optional($ticket->pesagem)->cliente)->razao_social ?? 'Cliente' }})
                                                                                 @else
                                                                                     Expedição Direta
                                                                                 @endif
                                                                             </td>
-                                                                            <td class="text-center">
+                                                                            <td data-label="Download MTR" class="text-center">
                                                                                 <a href="/portal-cliente/mtr/download/{{ $ticket->id }}" target="_blank" class="btn btn-sm btn-outline-success px-3 py-1" style="border-radius: 6px;">
                                                                                     <i class="fas fa-file-pdf me-1"></i> MTR
                                                                                 </a>
@@ -760,11 +761,11 @@ $exibeRastreabilidade = isset($cliente) && ((int)($cliente->exige_rastreabilidad
                                 @if(count($listaColetas) > 0)
                                     @foreach($listaColetas as $c)
                                         <tr>
-                                            <td>
+                                            <td data-label="Protocolo / Data">
                                                 <span class="fw-bold text-success">#{{ $c->id }}</span><br>
                                                 <small class="text-muted">{{ date('d/m/Y H:i', strtotime($c->created_at)) }}</small>
                                             </td>
-                                            <td>
+                                            <td data-label="Material / Veículo / Qtd">
                                                 <strong class="text-dark d-block">{{ $c->material }}</strong>
                                                 @if(!empty($c->tipo_veiculo))
                                                     <small class="text-secondary"><i class="fas fa-truck me-1"></i>{{ $c->tipo_veiculo }}</small>
@@ -773,7 +774,7 @@ $exibeRastreabilidade = isset($cliente) && ((int)($cliente->exige_rastreabilidad
                                                     <small class="badge bg-light text-dark border ms-1">{{ number_format($c->peso_estimado, 2, ',', '.') }} {{ $c->unidade_peso }}</small>
                                                 @endif
                                             </td>
-                                            <td>
+                                            <td data-label="Turno / Previsão">
                                                 @if(!empty($c->data_agendada))
                                                     <span class="fw-bold text-success"><i class="fas fa-check-circle me-1"></i>{{ date('d/m/Y H:i', strtotime($c->data_agendada)) }}</span>
                                                 @elseif(!empty($c->data_reserva))
@@ -783,7 +784,7 @@ $exibeRastreabilidade = isset($cliente) && ((int)($cliente->exige_rastreabilidad
                                                     <small class="text-muted">{{ $c->dias_disponiveis }}</small>
                                                 @endif
                                             </td>
-                                            <td class="text-center">
+                                            <td data-label="Status" class="text-center">
                                                 @php $st = strtolower((string)$c->status); @endphp
                                                 @if($st === 'pendente')
                                                     <span class="badge-status badge-pendente">Em Análise (Previsto)</span>

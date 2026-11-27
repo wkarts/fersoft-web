@@ -1,4 +1,7 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-operations.css') }}?v={{ filemtime(public_path('css/ui-operations.css')) }}">
+@endpush
 @section('content')
     <style>
         .btn-file {
@@ -40,10 +43,10 @@
         }
     </style>
 
-    <div class="container-fluid py-6" id="kt_content">
+    <div class="operations-page operations-page--purchase container-fluid py-6" id="kt_content">
         <form method="POST" enctype="multipart/form-data" action="{{ url('compraFiscal/new') }}">
             @csrf
-            <div class="card card-custom shadow-sm border-0">
+            <div class="card operations-panel card-custom shadow-sm border-0">
                 <div class="card-header bg-white border-bottom-0 pt-6 pb-0">
                     <h3 class="card-title align-items-start flex-column">
                         <span class="card-label font-weight-bolder text-dark">Importação de XML da NF-e</span>

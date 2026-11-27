@@ -1,6 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
 
+<header class="fer-page__heading"><h1>Pagamento de Plano</h1></header>
 <style type="text/css">
 	.card-stretch:hover{
 		cursor: pointer;
@@ -10,7 +14,7 @@
 		cursor: pointer;
 	}
 </style>
-<div class="card card-custom gutter-b">
+<div class="fer-page fer-operational fer-form card card-custom gutter-b">
 
 	<div class="card-body @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">
 		<div class="content d-flex flex-column flex-column-fluid" id="kt_content" >
@@ -19,7 +23,7 @@
 				<div class="row">
 					<div class="col-lg-12">
 
-						<div class="card card-custom gutter-b example example-compact">
+						<div class="fer-panel card card-custom gutter-b example example-compact">
 							<div class="card-header">
 								<h3 class="card-title">
 									Atribuir pagamento: <strong style="margin-left: 3px;" class="text-danger">{{$plano->empresa->nome}}</strong>

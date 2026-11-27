@@ -1,16 +1,21 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 @section('content')
-<div class="card card-custom gutter-b">
+<header class="fer-page__heading"><h1>Lista de operações de caixa</h1></header>
+<div class="card card-custom gutter-b fer-page fer-detail">
 	<div class="card-body">
 		<div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 			<div class="col-12">
-				<h1 class="text-white">Lista de operações de caixa</h1>
+				
 			</div>
 		</div>
 		<br>
 		<div class="" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
 
-			<form class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft" method="get" action="/caixa/filtro">
+			<form class="fer-filter @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft" method="get" action="/caixa/filtro">
 				<div class="row align-items-center">
 
 

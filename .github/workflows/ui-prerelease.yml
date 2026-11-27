@@ -16,6 +16,9 @@ jobs:
     uses: ./.github/workflows/ui-compatibility.yml
 
   preview-package:
+    outputs:
+      published: ${{ steps.publish.outputs.published }}
+      beta: ${{ steps.beta.outputs.version }}
     needs: compatibility
     if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
@@ -55,6 +58,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python tests/ui/test-release-identity.py
           git fetch --tags --force origin main
           # Escolher apenas tags estáveis vX.Y.Z alcançáveis pela main.
           stable="$(git tag --merged origin/main --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed -n '1p' || true)"
@@ -121,10 +125,13 @@ jobs:
             echo "available=false" >> "$GITHUB_OUTPUT"
           fi
       - name: Atualizar SOMENTE prerelease de desenvolvimento
+        id: publish
         if: steps.infra.outputs.available == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UI_BETA_VERSION: ${{ steps.beta.outputs.version }}
+          UI_BETA_BASE: ${{ steps.beta.outputs.stable }}
         run: |
           set -euo pipefail
           git fetch --no-tags origin main develop
@@ -133,8 +140,8 @@ jobs:
             exit 0
           fi
           tag='ui-continuous'
-          beta_version="${{ steps.beta.outputs.version }}"
-          stable_base="${{ steps.beta.outputs.stable }}"
+          beta_version="$UI_BETA_VERSION"
+          stable_base="$UI_BETA_BASE"
           test -n "$beta_version"
           test -n "$stable_base"
           if gh release view "$tag" --json isPrerelease --jq '.isPrerelease' > "$RUNNER_TEMP/previous-release.txt" 2>/dev/null; then
@@ -154,7 +161,10 @@ jobs:
           # Não alterar tags semânticas vX.Y.Z nem a main.
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git tag -f "$tag" "$GITHUB_SHA"
+          # O checkout Git recebe a mesma identidade do ZIP, sem importar tags
+          # semânticas locais nem depender de consultas ao provedor da release.
+          python scripts/ui/release-identity.py > "$RUNNER_TEMP/ui-release-identity.json"
+          git tag -a -f --cleanup=verbatim -F "$RUNNER_TEMP/ui-release-identity.json" "$tag" "$GITHUB_SHA"
           git push --force origin "refs/tags/$tag"
 
           cat > "$RUNNER_TEMP/ui-release-notes.md" <<EOF
@@ -189,3 +199,50 @@ jobs:
             echo "- SHA: $GITHUB_SHA"
             echo "- URL: ${{ github.server_url }}/${{ github.repository }}/releases/tag/ui-continuous"
           } >> "$GITHUB_STEP_SUMMARY"
+          echo "published=true" >> "$GITHUB_OUTPUT"
+
+  atualizar-pr-homologacao:
+    needs: preview-package
+    if: needs.preview-package.outputs.published == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Atualizar a beta publicada na PR de homologação
+        uses: actions/github-script@v7
+        env:
+          BETA_VERSION: ${{ needs.preview-package.outputs.beta }}
+        with:
+          script: |
+            const target = { ...context.repo, pull_number: 274 };
+            const { data: pr } = await github.rest.pulls.get(target);
+            if (pr.state !== 'open' || pr.base.ref !== 'main' || pr.head.ref !== 'develop' ||
+                pr.head.repo?.id !== pr.base.repo.id || pr.head.sha !== context.sha) return;
+
+            const url = process.env.GITHUB_SERVER_URL + '/' + process.env.GITHUB_REPOSITORY;
+            const version = process.env.BETA_VERSION;
+            const start = '<!-- ui-beta:start -->';
+            const end = '<!-- ui-beta:end -->';
+            const block = [
+              start,
+              '**Beta publicada:** [' + version + '](' + url + '/releases/tag/ui-continuous) · ' +
+                '[commit ' + context.sha.slice(0, 8) + '](' + url + '/commit/' + context.sha + ') · ' +
+                '[execução](' + url + '/actions/runs/' + context.runId + ')',
+              end,
+            ].join('\n');
+            const current = pr.body ?? '';
+            const first = current.indexOf(start);
+            const last = current.indexOf(end);
+            let body;
+            if (first === -1 && last === -1) {
+              body = block + '\n\n' + current;
+            } else if (first >= 0 && last > first && first === current.lastIndexOf(start) && last === current.lastIndexOf(end)) {
+              body = current.slice(0, first) + block + current.slice(last + end.length);
+            } else {
+              throw new Error('Marcadores da beta inválidos na descrição da PR #274.');
+            }
+
+            const title = pr.title.replace(/ · v\d+\.\d+\.\d+-beta\.\d+$/, '') + ' · ' + version;
+            if (title !== pr.title || body !== current) {
+              await github.rest.pulls.update({ ...target, title, body });
+            }

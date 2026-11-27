@@ -1,9 +1,12 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-cte.css') }}?v={{ filemtime(public_path('css/ui-cte.css')) }}">
+@endpush
 @section('content')
 
-<div class="card card-custom gutter-b">
+<div class="cte-page cte-page--novos_documentos">
 
-	<div class="card-body">
+	<div class="cte-page__content card-body">
 		<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
 			<h4>Nova Consulta</h4>
 

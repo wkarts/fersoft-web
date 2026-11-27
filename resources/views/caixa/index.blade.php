@@ -1,7 +1,12 @@
 @extends('default.layout')
-@section('content')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 
-<div class="card card-custom gutter-b">
+@section('content')
+<header class="fer-page__heading"><h1>Caixa</h1></header>
+
+<div class="card card-custom gutter-b fer-page fer-detail">
 
 	<div class="card-body">
 		<div class="" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
@@ -9,7 +14,7 @@
 				<!--begin::Portlet-->
 
 				@if(sizeof($usuarios) > 0 && $config->caixa_por_usuario == 1)
-				<form class="row" method="get" id="form-filtro" action="/caixa/filtroUsuario">
+				<form class="fer-filter row" method="get" id="form-filtro" action="/caixa/filtroUsuario">
 					<div class="form-group validated col-lg-3 col-md-2 col-sm-6">
 						<label class="col-form-label text-left">Usuário</label>
 						<select class="custom-select form-control" id="sel_usuario" name="usuario">
@@ -551,7 +556,7 @@
 <input type="hidden" id="_token" value="{{csrf_token()}}" name="">
 
 <div class="modal fade" id="modal-fechar-caixa" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-sm" role="document">
+	<div class="modal-dialog modal-sm fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">Fechamento de Caixa</h5>
@@ -579,7 +584,7 @@
 </div>
 
 <div class="modal fade" id="modal-abrir-caixa" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-sm" role="document">
+	<div class="modal-dialog modal-sm fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">Abertura de caixa</h5>
@@ -625,7 +630,7 @@
 </div>
 
 <div class="modal fade" id="modal-supri" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-md" role="document">
+	<div class="modal-dialog modal-md fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">SUPRIMENTO DE CAIXA</h5>
@@ -679,7 +684,7 @@
 </div>
 
 <div class="modal fade" id="modal-sangria" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-md" role="document">
+	<div class="modal-dialog modal-md fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">SANGRIA DE CAIXA</h5>
@@ -723,7 +728,7 @@
 </div>
 
 <div class="modal fade" id="modal-pagamentos" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="modal-dialog modal-lg fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">DETALHES PAGAMENTO <strong class="venda-id"></strong></h5>

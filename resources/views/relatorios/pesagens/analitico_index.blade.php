@@ -1,5 +1,9 @@
 {{-- resources/views/relatorios/pesagens/analitico_index.blade.php --}}
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-admin-modules.css') }}?v={{ filemtime(public_path('css/ui-admin-modules.css')) }}">
+@endpush
 
 @section('css')
     <style type="text/css">
@@ -15,7 +19,7 @@
 
 @section('content')
 
-    <div class="content d-flex flex-column flex-column-fluid" id="kt_content">
+    <div class="document-fiscal-page admin-page admin-page--report-weighing content d-flex flex-column flex-column-fluid" id="kt_content">
 
         <div class="subheader py-2 py-lg-4 subheader-solid" id="kt_subheader">
             <div class="container-fluid d-flex align-items-center justify-content-between flex-wrap flex-sm-nowrap">

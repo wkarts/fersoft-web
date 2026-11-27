@@ -1,6 +1,15 @@
 @extends('default.layout')
+@section('css')
+@unless(config('ui_theme.active', false))
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+@endunless
+@endsection
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+@endpush
 
 @section('content')
+<div class="ui-admin ui-admin-tarefas">
     <div class="container-fluid">
 
         @if(session('mensagem_sucesso'))
@@ -17,15 +26,15 @@
             </div>
         @endif
 
-        <div class="card shadow-sm mt-3">
-            <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="ui-admin-panel mt-3">
+            <div class="ui-admin-panel-head d-flex justify-content-between align-items-center">
                 <h4 class="mb-0">{{ $title }}</h4>
                 <a href="{{ $newItemUrl }}" class="btn btn-success">
                     <i class="fas fa-plus"></i> {{ $newItemText }}
                 </a>
             </div>
 
-            <div class="card-body">
+            <div class="ui-admin-panel-body">
                 <div class="table-responsive">
                     <table class="table table-striped table-hover align-middle">
                         <thead class="table-dark">
@@ -137,4 +146,5 @@
             window.location.href = '/tarefas/finalizar/' + id + '?justificativa=' + encodeURIComponent(justificativa);
         }
     </script>
+</div>
 @endsection

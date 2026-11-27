@@ -1,6 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 @section('content')
-<div class="card card-custom gutter-b">
+<div class="fer-extra fer-extra--stock fer-extra--canvas card card-custom gutter-b">
 	<input type="hidden" id="pass" value="{{ $config->senha_remover ?? '' }}">
 	<div class="card-body @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 		<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
@@ -166,7 +170,7 @@
 	</div>
 </div>
 
-<div class="modal fade" id="modal_estoque" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fer-extra-modal fade" id="modal_estoque" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-sm" role="document">
 		<div class="modal-content">
 			<div class="modal-header">

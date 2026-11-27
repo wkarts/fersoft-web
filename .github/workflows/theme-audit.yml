@@ -1,0 +1,83 @@
+name: Auditoria completa da interface Blade
+
+on:
+  push:
+    branches: [develop]
+  pull_request:
+    branches: [develop]
+    paths:
+      - 'resources/views/**'
+      - 'public/css/**'
+      - 'public/js/**'
+      - 'resources/js/**'
+      - 'resources/css/**'
+      - 'config/ui_theme.php'
+      - 'scripts/auditar-tema.php'
+      - 'scripts/auditar-assets.php'
+      - 'scripts/ui/coverage-report.php'
+      - 'docs/ui/COBERTURA-INTEGRAL.md'
+      - '.github/workflows/theme-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar PHP somente para auditoria
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+      - name: Validar sintaxe do auditor
+        run: php -l scripts/auditar-tema.php
+      - name: Inventariar TODAS as views do checkout
+        run: |
+          set -euo pipefail
+          mkdir -p storage/app
+          php scripts/auditar-tema.php --out=storage/app/tema-inventario.json | tee storage/app/tema-resumo.txt
+          php -r '
+            $r = json_decode(file_get_contents("storage/app/tema-inventario.json"), true, 512, JSON_THROW_ON_ERROR);
+            echo "=== RESUMO COMPLETO DOS GRUPOS (contagens por módulo) ===\n";
+            echo "grupo\tviews\tERP shell\tviews com modal\tforms\tviews com datatables\n";
+            foreach ($r["modules"] as $key => $v) {
+              echo implode("\t", [$key, $v["total_views"], $v["erp_shell"], $v["with_modals"], $v["with_forms"], $v["with_datatables"]]), "\n";
+            }
+            echo "=== FIM DO INVENTÁRIO ===\n";
+          ' > storage/app/tema-modulos.tsv
+          cat storage/app/tema-modulos.tsv
+      - name: Validar e auditar todos os assets CSS/JS
+        run: |
+          set -euo pipefail
+          php -l scripts/auditar-assets.php
+          php scripts/auditar-assets.php --out=storage/app/tema-assets.json | tee storage/app/tema-assets-resumo.txt
+      - name: Gerar relatório técnico automático para orientar implementação
+        run: |
+          set -euo pipefail
+          php -l scripts/ui/coverage-report.php
+          php scripts/ui/coverage-report.php \
+            --views=storage/app/tema-inventario.json \
+            --assets=storage/app/tema-assets.json \
+            --out=storage/app/tema-cobertura.json \
+            --csv=storage/app/tema-cobertura.csv \
+            | tee storage/app/tema-cobertura-resumo.txt
+      - name: Publicar inventário completo (JSON + TSV)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: inventario-ui-blade-${{ github.run_id }}
+          path: |
+            storage/app/tema-inventario.json
+            storage/app/tema-resumo.txt
+            storage/app/tema-modulos.tsv
+            storage/app/tema-assets.json
+            storage/app/tema-assets-resumo.txt
+            storage/app/tema-cobertura.json
+            storage/app/tema-cobertura.csv
+            storage/app/tema-cobertura-resumo.txt
+          if-no-files-found: error
+          retention-days: 30

@@ -1,4 +1,7 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+@endpush
 @section('content')
 <style type="text/css">
 	#focus-codigo:hover{ cursor: pointer }
@@ -19,7 +22,7 @@
 
 <input type="hidden" id="fornecedor_id" value="{{ isset($forn->id) ? $forn->id : (isset($fornecedor['id']) ? $fornecedor['id'] : 0) }}">
 
-<div class="d-flex flex-column flex-column-fluid" id="kt_content">
+<div class="document-fiscal-page document-fiscal-page--dfe d-flex flex-column flex-column-fluid" id="kt_content">
 	<div class="card card-custom gutter-b example example-compact">
 		<div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 			<div class="col-lg-12">
@@ -421,7 +424,7 @@
 	</div>
 </div>
 
-<div class="modal fade" id="modal1" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade document-fiscal-dialog" id="modal1" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-xl" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -806,7 +809,7 @@
 	</div>
 </div>
 
-<div class="modal fade" id="modal2" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade document-fiscal-dialog" id="modal2" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-lg" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -835,7 +838,7 @@
 	</div>
 </div>
 
-<div class="modal fade" id="modal-link" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade document-fiscal-dialog" id="modal-link" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-lg" role="document">
 		<div class="modal-content">
 			<div class="modal-header">

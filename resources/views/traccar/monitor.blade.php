@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 
 @section('content')
-    <div class="container mt-5">
+    <div class="fer-extra fer-extra--people fer-extra--traccar container mt-5">
         <h3>{{ $title }}</h3>
         <div id="monitor" class="p-4" style="background-color: #f9f9f9; border: 1px solid #ddd; border-radius: 5px;">
             <p>Conectando ao WebSocket...</p>

@@ -1,7 +1,12 @@
 @extends('default.layout', ['title' => 'Extrato de Adiantamentos'])
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 
 @section('content')
-<div class="container-fluid">
+<header class="fer-page__heading"><h1>Extrato de Adiantamentos</h1></header>
+<div class="container-fluid fer-page fer-advance">
     <div class="card card-primary card-outline">
         <div class="card-header">
             <h3 class="card-title">Extrato: <b>{{ $pessoa->razao_social }}</b></h3>
@@ -120,7 +125,7 @@
 
 {{-- Modal de Edição --}}
 <div class="modal fade" id="modalEditar" role="dialog" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog fer-dialog">
         <div class="modal-content">
             <form action="" id="formEditar" method="POST">
                 @csrf

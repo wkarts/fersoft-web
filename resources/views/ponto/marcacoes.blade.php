@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 
 @section('content')
-    <div class="card card-custom gutter-b">
+    <div class="fer-extra fer-extra--ponto card card-custom gutter-b">
         <div class="card-header border-0 pt-5">
             <h3 class="card-title font-weight-bolder text-dark">
                 <i class="la la-list-alt text-primary mr-2"></i> {{ $title ?? 'Registro Geral de Marcações de Ponto' }}

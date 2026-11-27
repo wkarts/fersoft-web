@@ -1,16 +1,19 @@
 @extends('default.layout')
+@section('css')
+@unless(config('ui_theme.active', false))
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+@endunless
+@endsection
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+@endpush
 @section('content')
+<div class="ui-admin ui-admin-usuarios">
 
-    <style>
-        /* Estilos para deixar o Raio-X limpo e profissional */
-        .log-table th { background-color: #f3f6f9; font-weight: 700; color: #3F4254; border-bottom: 2px solid #e4e6ef; padding: 10px; }
-        .log-table td { padding: 8px 10px; border-bottom: 1px solid #e4e6ef; color: #3F4254; font-size: 13px;}
-        .log-table tr:last-child td { border-bottom: none; }
-        .log-key { font-weight: bold; text-transform: uppercase; font-size: 11px; color: #b5b5c3; display: block; margin-bottom: 2px;}
-    </style>
+    
 
-    <div class="card card-custom gutter-b">
-        <div class="card-header border-0 pt-6 pb-2">
+    <div class="ui-admin-panel gutter-b">
+        <div class="ui-admin-panel-head border-0 pt-6 pb-2">
             <h3 class="card-title font-weight-bolder text-dark">
                 <i class="flaticon-time-3 text-primary mr-2 font-size-h3"></i>
                 Histórico de Atividades: <span class="text-info ml-2">{{$usuario->nome}}</span>
@@ -22,7 +25,7 @@
             </div>
         </div>
 
-        <div class="card-body pt-3">
+        <div class="ui-admin-panel-body pt-3">
             <div class="mb-4">
                 <span class="text-muted font-weight-bold font-size-sm">Total de registos encontrados: <span class="text-dark">{{$acessos->total()}}</span></span>
             </div>
@@ -221,6 +224,7 @@
         </div>
     </div>
 
+</div>
 @endsection
 
 @section('javascript')

@@ -1,7 +1,12 @@
 @extends('default.layout')
-@section('content')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 
-<div class="card card-custom gutter-b">
+@section('content')
+<header class="fer-page__heading"><h1>Contas Bancárias</h1></header>
+
+<div class="card card-custom gutter-b fer-page fer-list">
 
 	<div class="card-body">
 		<div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
@@ -25,7 +30,7 @@
 
 				<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
 
-					<div class="wizard wizard-3" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
+					<div class="wizard wizard-3 fer-results" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
 						<div class="wizard-nav">
 
 							<div class="wizard-steps px-8 py-8 px-lg-15 py-lg-3">

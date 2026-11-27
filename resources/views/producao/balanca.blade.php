@@ -1,5 +1,9 @@
 @extends('default.layout')
 
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 @section('content')
     <style>
         /* Estilos do PDV Industrial */
@@ -15,7 +19,7 @@
         .display-peso { font-size: 32px; font-weight: bold; color: #212121; background: #e4e6ef; border: none; text-align: right; height: 60px; border-radius: 8px; }
     </style>
 
-    <div class="card card-custom gutter-b">
+    <div class="fer-page fer-operational fer-form card card-custom gutter-b">
         <div class="card-header">
             <div class="card-title">
                 <h3 class="card-label"><i class="fa fa-balance-scale text-primary"></i> Balança Cega de Produção & Corte</h3>

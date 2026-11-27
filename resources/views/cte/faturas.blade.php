@@ -1,12 +1,15 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-cte.css') }}?v={{ filemtime(public_path('css/ui-cte.css')) }}">
+@endpush
 @section('content')
-<div class="card card-custom gutter-b">
-	<div class="card-body">
+<div class="cte-page cte-page--faturas">
+	<div class="cte-page__content card-body">
 
-		<div class="" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
+		<div class="cte-list-intro" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
 
 			<input type="hidden" id="_token" value="{{ csrf_token() }}">
-			<form class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft" method="get" action="/cte/filtroFatura">
+			<form class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft cte-filters" method="get" action="/cte/filtroFatura">
 				<div class="row align-items-center">
 					
 					<div class="form-group col-lg-5 col-md-4 col-sm-6">
@@ -60,7 +63,7 @@
 				</div>
 			</form>
 			<br>
-			<h4 class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">Lista de CTe</h4>
+			<h4 class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft cte-page__title">Lista de CTe</h4>
 
 			<label class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">Registros: <strong class="text-success">{{sizeof($data)}}</strong></label>
 			

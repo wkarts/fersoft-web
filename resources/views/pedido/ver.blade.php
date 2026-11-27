@@ -1,4 +1,8 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 @section('css')
 <style type="text/css">
 	.card-header{
@@ -10,7 +14,8 @@
 </style>
 @endsection
 @section('content')
-<div class="card card-custom gutter-b">
+<header class="fer-page__heading"><h1>Visualizar Comanda</h1></header>
+<div class="card card-custom gutter-b fer-page fer-detail">
 	<div class="card-body">
 
 		<h3>Comanda: <strong class="text-danger">{{$pedido->comanda}}</strong></h3>
@@ -432,7 +437,7 @@
 <div class="modal fade" id="modal-endereco" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<form method="get" action="/pedidos/setarEndereco">
 
-		<div class="modal-dialog modal-lg" role="document">
+		<div class="modal-dialog modal-lg fer-dialog" role="document">
 			<div class="modal-content">
 				<div class="modal-header">
 					<h5 class="modal-title">ENDEREÇO</h5>

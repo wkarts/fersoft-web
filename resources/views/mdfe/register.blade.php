@@ -1,4 +1,7 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-fiscal.css') }}?v={{ filemtime(public_path('css/ui-fiscal.css')) }}">
+@endpush
 @section('css')
 <style type="text/css">
 	.btn-file {
@@ -25,10 +28,10 @@
 @endsection
 @section('content')
 
-<div class="card card-custom gutter-b">
+<div class="fiscal-page fiscal-page--mdfe-register">
 
 
-	<div class="card-body @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
+	<div class="fiscal-page__content card-body @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 		<div class="content d-flex flex-column flex-column-fluid" id="kt_content" >
 
 			<div class="row" id="anime" style="display: none">
@@ -38,10 +41,11 @@
 				</div>
 			</div>
 
-			<div class="col-lg-12" id="content">
+			<div class="col-lg-12 fiscal-form-content" id="content">
+				<div class="fiscal-page__heading">
 
 				@if(!isset($mdfe))
-				<div class="row">
+				<div class="fiscal-page__header-action">
 					<form id="form-import" method="post" action="/mdfe/importarXml" enctype="multipart/form-data">
 						@csrf
 						<input type="hidden" name="pagamento_atual" id="pagamento_atual" value="">
@@ -61,12 +65,13 @@
 				@endif
 
 				@if(!isset($mdfe))
-				<h1 class="text-success">EMISSÃO DE MDFe</h1>
+				<h1 class="fiscal-page__title">EMISSÃO DE MDFe</h1>
 				@else
-				<h1 class="text-success">ALTERAÇÃO DE MDFe</h1>
+				<h1 class="fiscal-page__title">ALTERAÇÃO DE MDFe</h1>
 				@endif
+				</div>
 
-				<h3 class="card-title">DADOS INICIAIS</h3>
+				<h3 class="fiscal-section-title">DADOS INICIAIS</h3>
 
 				<input type="hidden" id="_token" value="{{csrf_token()}}" name="">
 				<div class="row">
@@ -231,7 +236,7 @@
 						</div>
 					</div>
 					<div class="col-12">
-						<div class="card card-custom gutter-b">
+						<div class="card card-custom gutter-b fiscal-panel">
 							<div class="card-body">
 								<h5>Informações de Pagamento (MDF-e)</h5>
 								<div class="row">
@@ -314,7 +319,7 @@
 								</div>
 
 								<div id="display-tracao" class="row" style="display: none"><br>
-									<div class="card card-custom gutter-b">
+									<div class="card card-custom gutter-b fiscal-panel">
 										<div class="card-body">
 
 											<h4 class="center-align">Veiculo de Tração Selecionado</h4>
@@ -344,7 +349,7 @@
 									</div>
 								</div>
 								<div id="display-reboque" class="row" style="display: none"><br>
-									<div class="card card-custom gutter-b">
+									<div class="card card-custom gutter-b fiscal-panel">
 										<div class="card-body">
 
 											<h4 class="center-align">Veiculo de Reboque Selecionado</h4>
@@ -376,7 +381,7 @@
 									</div>
 								</div>
 								<div id="display-reboque2" class="row" style="display: none"><br>
-									<div class="card card-custom gutter-b">
+									<div class="card card-custom gutter-b fiscal-panel">
 										<div class="card-body">
 
 											<h4 class="center-align">Veiculo de Reboque 2 Selecionado</h4>
@@ -408,7 +413,7 @@
 									</div>
 								</div>
 								<div id="display-reboque3" class="row" style="display: none"><br>
-									<div class="card card-custom gutter-b">
+									<div class="card card-custom gutter-b fiscal-panel">
 										<div class="card-body">
 
 											<h4 class="center-align">Veiculo de Reboque 3 Selecionado</h4>
@@ -433,7 +438,7 @@
 				<div class="row">
 					<div class="form-group col-sm-12 col-lg-12 col-12">
 
-						<div class="card card-custom gutter-b">
+						<div class="card card-custom gutter-b fiscal-panel">
 							<div class="card-body">
 								<h4 class="card-title">Produto Predominante</h4>
 								<div class="row">
@@ -539,7 +544,7 @@
 
 				<!-- Wizard -->
 
-				<div class="card card-custom gutter-b">
+				<div class="card card-custom gutter-b fiscal-panel">
 
 					<div class="card-body">
 
@@ -601,7 +606,7 @@
 													<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12 col-12">
 
 														<!-- Inicio da tabela -->
-														<div class="card card-custom gutter-b">
+														<div class="card card-custom gutter-b fiscal-panel">
 
 															<div class="card-body">
 																<h4>Seguradora (Opcional)</h4>
@@ -653,7 +658,7 @@
 													</div>
 
 													<div class="col-sm-8 col-lg-8 col-md-8 col-xl-8 col-12">
-														<div class="card card-custom gutter-b">
+														<div class="card card-custom gutter-b fiscal-panel">
 															<div class="card-body">
 																<h4>Municipio(s) de Carregamento</h4>
 
@@ -705,7 +710,7 @@
 													</div>
 
 													<div class="col-sm-4 col-lg-4 col-md-4 col-xl-4 col-12">
-														<div class="card card-custom gutter-b">
+														<div class="card card-custom gutter-b fiscal-panel">
 															<div class="card-body">
 																<h4>Percurso</h4>
 
@@ -768,7 +773,7 @@
 														<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12 col-12">
 
 															<!-- Inicio da tabela -->
-															<div class="card card-custom gutter-b">
+															<div class="card card-custom gutter-b fiscal-panel">
 
 																<div class="card-body">
 																	<h4>CIOT (Opcional)</h4>
@@ -834,7 +839,7 @@
 														<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12 col-12">
 
 															<!-- Inicio da tabela -->
-															<div class="card card-custom gutter-b">
+															<div class="card card-custom gutter-b fiscal-panel">
 
 																<div class="card-body">
 																	<h4>Vale Pedagio (Opcional)</h4>
@@ -921,7 +926,7 @@
 														<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12 col-12">
 
 															<!-- Inicio da tabela -->
-															<div class="card card-custom gutter-b">
+															<div class="card card-custom gutter-b fiscal-panel">
 
 																<div class="card-body">
 																	<h4>Condutor</h4>
@@ -986,7 +991,7 @@
 													<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12 col-12">
 
 														<!-- Inicio da tabela -->
-														<div class="card card-custom gutter-b">
+														<div class="card card-custom gutter-b fiscal-panel">
 
 															<div class="card-body">
 																<h3>Informações da Unidade de Transporte / Documentos Fiscais / Lacres</h3>
@@ -1051,7 +1056,7 @@
 												<div class="row">
 													<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12 col-12">
 
-														<div class="card card-custom gutter-b">
+														<div class="card card-custom gutter-b fiscal-panel">
 															<div class="card-body">
 																<h5>NFe Referência</h5>
 																<div class="row">
@@ -1083,7 +1088,7 @@
 												<div class="row">
 													<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12 col-12">
 
-														<div class="card card-custom gutter-b">
+														<div class="card card-custom gutter-b fiscal-panel">
 															<div class="card-body">
 																<h5>CTe Referência</h5>
 																<div class="row">
@@ -1115,7 +1120,7 @@
 												<div class="row">
 													<div class="col-sm-6 col-lg-6 col-md-12 col-xl-6 col-12">
 
-														<div class="card card-custom gutter-b">
+														<div class="card card-custom gutter-b fiscal-panel">
 															<div class="card-body">
 																<h5>Lacres de Transporte</h5>
 
@@ -1168,7 +1173,7 @@
 
 													<div class="col-sm-6 col-lg-6 col-md-12 col-xl-6 col-12">
 
-														<div class="card card-custom gutter-b">
+														<div class="card card-custom gutter-b fiscal-panel">
 															<div class="card-body">
 																<h5>Lacres da Unidade da Carga</h5>
 																<div class="row">
@@ -1223,7 +1228,7 @@
 												<div class="row">
 													<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12 col-12">
 
-														<div class="card card-custom gutter-b">
+														<div class="card card-custom gutter-b fiscal-panel">
 															<div class="card-body">
 																<h5>Municipio de Descarregamento</h5>
 

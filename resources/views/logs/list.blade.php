@@ -1,6 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-admin-modules.css') }}?v={{ filemtime(public_path('css/ui-admin-modules.css')) }}">
+@endpush
 
 @section('content')
+<div class="document-fiscal-page admin-page admin-page--logs">
     <style>
         /* ----- GRID GERAL ----- */
         .datatable-row, .datatable-cell {
@@ -216,7 +221,7 @@
     </div>
 
     <!-- Modal para Visualizar Detalhes -->
-    <div class="modal fade" id="modalDetalhes" tabindex="-1" role="dialog" aria-labelledby="modalDetalhesLabel" aria-hidden="true">
+    <div class="modal fade document-fiscal-dialog" id="modalDetalhes" tabindex="-1" role="dialog" aria-labelledby="modalDetalhesLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
@@ -265,6 +270,7 @@
         </div>
     </div>
 
+</div>
 @endsection
 
 @section('javascript')

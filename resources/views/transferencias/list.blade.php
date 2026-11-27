@@ -1,6 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 @section('content')
-<div class="card card-custom gutter-b">
+<header class="fer-page__heading"><h1>{{ $title }}</h1></header>
+<div class="card card-custom gutter-b fer-page fer-list">
 	<input type="hidden" id="pass" value="{{ $config->senha_remover ?? '' }}">
 	<div class="card-body @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 		<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
@@ -10,9 +15,9 @@
 					<div class="col-xl-12">
 						<div class="row">
 							<div class="col-xl-12">
-								<div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded">
+								<div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded fer-results">
 									<br>
-									<form method="get" action="/transferencia/search">
+									<form method="get" action="/transferencia/search" class="fer-filter">
 										<div class="row align-items-center">
 											<div class="form-group col-lg-4 col-12">
 												<div>

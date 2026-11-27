@@ -1,6 +1,9 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+@endpush
 @section('content')
-    <div class=" d-flex flex-column flex-column-fluid" id="kt_content">
+    <div class="document-fiscal-page document-fiscal-page--configNota  d-flex flex-column flex-column-fluid" id="kt_content">
         <div class="card card-custom gutter-b example example-compact">
             <div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
                 <div class="col-lg-12">
@@ -535,7 +538,7 @@
                                                                         }
                                                                     });
                                                                 </script>
-                                                                <div class="modal fade" id="modalInstrucoesStoragePesagem" tabindex="-1" role="dialog" aria-hidden="true">
+                                                                <div class="modal fade document-fiscal-dialog" id="modalInstrucoesStoragePesagem" tabindex="-1" role="dialog" aria-hidden="true">
                                                                     <div class="modal-dialog modal-lg" role="document">
                                                                         <div class="modal-content">
                                                                             <div class="modal-header">
@@ -555,7 +558,7 @@
                                                                     </div>
                                                                 </div>
 
-                                                                <div class="modal fade" id="modalParametrosPesagemBalanca" tabindex="-1" role="dialog" aria-hidden="true">
+                                                                <div class="modal fade document-fiscal-dialog" id="modalParametrosPesagemBalanca" tabindex="-1" role="dialog" aria-hidden="true">
                                                                     <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
                                                                         <div class="modal-content">
                                                                             <div class="modal-header">
@@ -1597,7 +1600,7 @@
     </div>
 
     <!-- Modal Reutilizável -->
-    <div class="modal fade" id="modalConfirmacao" tabindex="-1" role="dialog" aria-labelledby="modalConfirmacaoLabel" aria-hidden="true">
+    <div class="modal fade document-fiscal-dialog" id="modalConfirmacao" tabindex="-1" role="dialog" aria-labelledby="modalConfirmacaoLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
                 <!-- Cabeçalho -->

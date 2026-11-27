@@ -1,6 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 @section('content')
-<div class=" d-flex flex-column flex-column-fluid" id="kt_content">
+<div class="fer-extra fer-extra--people fer-extra--eventos  d-flex flex-column flex-column-fluid" id="kt_content">
 	<div class="card card-custom gutter-b example example-compact">
 		<div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 			<div class="col-lg-12">

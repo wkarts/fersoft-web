@@ -1,6 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
-<div class="card card-custom gutter-b">
+<header class="fer-page__heading"><h1>Lista de Trocas/Devoluções</h1></header>
+<div class="fer-page fer-operational fer-list card card-custom gutter-b">
 	<div class="card-body">
 
 		<div class="" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
@@ -9,7 +13,7 @@
 			<input type="hidden" id="pass" value="{{ $config->senha_remover }}">
 			@endif
 			<input type="hidden" id="_token" value="{{ csrf_token() }}">
-			<form class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft" method="get" action="/trocas/filtro">
+			<form class="fer-filter @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft" method="get" action="/trocas/filtro">
 				<div class="row align-items-center">
 
 					<div class="form-group col-lg-4 col-md-4 col-sm-6">
@@ -87,7 +91,7 @@
 		<div class="row @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">
 			<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
 
-				<div class="wizard wizard-3" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
+				<div class="fer-results wizard wizard-3" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
 					<!--begin: Wizard Nav-->
 
 					<div class="wizard-nav">

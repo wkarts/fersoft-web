@@ -3,9 +3,13 @@
 @endphp
 
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 
 @section('content')
-    <div class="card card-custom gutter-b">
+    <div class="fer-extra fer-extra--ponto card card-custom gutter-b">
         <div class="card-header border-0 pt-5">
             <h3 class="card-title font-weight-bolder text-dark">
                 <i class="la la-calendar-check text-primary mr-2"></i> {{ $title }}
@@ -129,7 +133,7 @@
     </div>
 
     <!-- MODAL COMPENSAR / ABATER SALDO -->
-    <div class="modal fade" id="modalCompensacao" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal fer-extra-modal fade" id="modalCompensacao" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
                 <form method="POST" action="{{ url('/ponto/fechamento/ajustar-saldo') }}">

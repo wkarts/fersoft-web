@@ -1,9 +1,12 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-operations.css') }}?v={{ filemtime(public_path('css/ui-operations.css')) }}">
+@endpush
 @section('content')
-    <div class="container-fluid">
+    <div class="operations-page operations-page--purchase container-fluid">
         <div class="card card-primary card-outline">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h3 class="card-title">Nova Apuração de Difal</h3>
+                <h3 class="card-title operations-page__title">Nova Apuração de Difal</h3>
                 <!-- 🟢 BOTÃO DE AJUDA ADICIONADO -->
                 <button type="button" class="btn btn-outline-info btn-sm ml-auto" data-toggle="modal" data-target="#modalManualAjudas">
                     <i class="fa fa-question-circle"></i> Como usar esta tela?
@@ -51,7 +54,7 @@
 
         <div class="row mt-3" id="resultado-calculo" style="display: none;">
             <div class="col-md-12">
-                <div class="card">
+                <div class="card operations-panel">
                     <div class="card-body p-0">
                         <table class="table table-sm table-hover table-bordered">
                             <thead class="thead-dark">
@@ -75,7 +78,7 @@
     </div>
 
     <!-- 🟢 MODAL DO MANUAL DE OPERAÇÃO FISCAL (ATUALIZADO COM CÁLCULO LEGAL) -->
-    <div class="modal fade" id="modalManualAjudas" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal fade operations-dialog" id="modalManualAjudas" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-info text-white">

@@ -1,5 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 @section('content')
+<header class="fer-page__heading"><h1>Importação de Contas a Receber</h1></header>
 <style type="text/css">
 	.btn-file {
 		position: relative;
@@ -27,7 +32,7 @@
 
 	<form method="post" enctype="multipart/form-data" action="/contasReceber/importacao">
 
-		<div class="card card-custom gutter-b example example-compact">
+		<div class="card card-custom gutter-b example example-compact fer-page fer-detail">
 			<div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 				<div class="col-lg-12">
 					<br>

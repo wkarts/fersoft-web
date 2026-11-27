@@ -1,8 +1,13 @@
 @extends('default.layout', ['title' => 'Finalizando caixa'])
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 
 @section('content')
+<header class="fer-page__heading"><h1>Finalizando caixa</h1></header>
 <div class=" d-flex flex-column flex-column-fluid" id="kt_content">
-	<div class="card card-custom gutter-b example example-compact">
+	<div class="card card-custom gutter-b example example-compact fer-page fer-detail">
 		<div class="m-4 @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 			<div class="col-lg-12">
 

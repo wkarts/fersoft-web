@@ -1,6 +1,9 @@
 @extends('default.layout', ['title' => 'SPED Configuração'])
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+@endpush
 @section('content')
-<div class="card card-custom gutter-b">
+<div class="document-fiscal-page document-fiscal-page--sped card card-custom gutter-b">
   
   <!-- SELETOR DE MATRIZ / FILIAL -->
     <div class="alert alert-custom alert-light-primary fade show mb-8" role="alert">

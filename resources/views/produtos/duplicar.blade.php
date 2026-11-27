@@ -1,5 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 @section('content')
+<header class="fer-page__heading"><h1>Duplicar Produto</h1></header>
 <style type="text/css">
 	.modal-body-grade{
 		height: 70vh;
@@ -7,11 +12,11 @@
 	}
 </style>
 <div class=" d-flex flex-column flex-column-fluid" id="kt_content">
-	<div class="card card-custom gutter-b example example-compact">
+	<div class="card card-custom gutter-b example example-compact fer-page fer-detail">
 		<div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 			<div class="col-lg-12">
 				<br>
-				<form method="post" action="/produtos/save" enctype="multipart/form-data">
+				<form class="form fv-plugins-bootstrap fv-plugins-framework" id="kt_form" method="post" action="/produtos/save" enctype="multipart/form-data">
 
 					<input type="hidden" name="id" value="{{{ isset($produto) ? $produto->id : 0 }}}">
 					<div class="card card-custom gutter-b example example-compact">
@@ -59,7 +64,6 @@
 							<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
 
 								<!--begin: Wizard Form-->
-								<form class="form fv-plugins-bootstrap fv-plugins-framework" id="kt_form">
 									<!--begin: Wizard Step 1-->
 									<p class="kt-widget__data text-danger">Campos com (*) obrigatório</p>
 
@@ -1432,7 +1436,6 @@
 							</div>
 						</div>
 
-					</form>
 				</div>
 			</div>
 			<input type="hidden" id="sub_id" value="@if(isset($produto)) {{$produto->sub_categoria_id}} @else 0 @endif" name="">
@@ -1447,7 +1450,7 @@
 </div>
 
 <div class="modal fade" id="modal-grade1" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="modal-dialog modal-lg fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">Escolha as combinações</h5>
@@ -1485,7 +1488,7 @@
 </div>
 
 <div class="modal fade" id="modal-grade2" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="modal-dialog modal-lg fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">Preencha os campos das combinações</h5>
@@ -1513,7 +1516,7 @@
 </div>
 
 <div class="modal fade" id="modal-categoria" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog" role="document">
+	<div class="modal-dialog fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">Nova Categoria</h5>
@@ -1549,7 +1552,7 @@
 </div>
 
 <div class="modal fade" id="modal-sub-categoria" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog" role="document">
+	<div class="modal-dialog fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">Nova Sub Categoria</h5>
@@ -1584,7 +1587,7 @@
 </div>
 
 <div class="modal fade" id="modal-marca" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog" role="document">
+	<div class="modal-dialog fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">Nova Marca</h5>

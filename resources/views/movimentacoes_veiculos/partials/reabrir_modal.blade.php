@@ -1,7 +1,7 @@
 {{-- Reaproveita o conceito/modal OTP da pesagem, sem alterar suas views. --}}
 <div class="modal fade" id="reabrirMovimentacaoOtpModal" tabindex="-1" role="dialog"
      aria-labelledby="reabrirMovimentacaoOtpTitulo" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-dialog modal-dialog-centered fer-dialog" role="document">
         <div class="modal-content">
             <form id="formReabrirMovimentacaoOtp" autocomplete="off">
                 @csrf

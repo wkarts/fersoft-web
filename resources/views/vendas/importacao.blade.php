@@ -1,6 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 
 @section('content')
+<header class="fer-page__heading"><h1>Importação de XMLs</h1></header>
     <style>
         /* Ajustes visuais para o input customizado */
         .custom-file-label {
@@ -9,8 +14,8 @@
             white-space: nowrap;
         }
         .input-group-text.bg-primary {
-            background-color: #3699FF !important;
-            border-color: #3699FF !important;
+            background-color: #1f9866 !important;
+            border-color: #1f9866 !important;
         }
         .btn-success.btn-import {
             padding-left: 2rem;
@@ -22,7 +27,7 @@
         <form method="post" enctype="multipart/form-data" action="{{ url('/vendas/importacao') }}">
             @csrf
 
-            <div class="card card-custom gutter-b example example-compact">
+            <div class="card card-custom gutter-b example example-compact fer-page fer-detail">
                 <div class="card-header">
                     <h3 class="card-title">Importação de XMLs</h3>
                 </div>

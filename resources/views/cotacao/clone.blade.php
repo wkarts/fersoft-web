@@ -1,9 +1,13 @@
 
 
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
 
 
+<header class="fer-page__heading"><h1>Cotação</h1></header>
 <div class="row" id="anime" style="display: none">
 	<div class="col s8 offset-s2">
 		<lottie-player src="/anime/clone.json"  background="transparent"  speed="0.8"  style="width: 100%; height: 300px;"    autoplay >
@@ -11,7 +15,7 @@
 	</div>
 </div>
 
-<div class="card card-custom gutter-b" id="content" style="display: block">
+<div class="fer-page fer-operational fer-form card card-custom gutter-b" id="content" style="display: block">
 
 	<div class="card-body">
 		<input type="hidden" id="cotacao" value="{{$cotacao->id}}">
@@ -19,7 +23,7 @@
 		<input type="hidden" id="_token" value="{{ csrf_token() }}">
 
 		<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
-			<div class="card card-custom gutter-b example example-compact">
+			<div class="fer-panel card card-custom gutter-b example example-compact">
 
 
 				<div class="card-body">

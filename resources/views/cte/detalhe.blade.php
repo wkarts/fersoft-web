@@ -1,9 +1,12 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-cte.css') }}?v={{ filemtime(public_path('css/ui-cte.css')) }}">
+@endpush
 @section('content')
 
-<div class="card card-custom gutter-b">
+<div class="cte-page cte-page--detalhe">
 
-	<div class="card-body">
+	<div class="cte-page__content card-body">
 		<div class="content d-flex flex-column flex-column-fluid" id="kt_content" >
 
 			<div class="col-lg-12" id="content">
@@ -49,7 +52,7 @@
 				<div class="row">
 					<div class="col-sm-6 col-lg-6 col-md-6">
 
-						<div class="card card-custom gutter-b">
+						<div class="card card-custom gutter-b cte-panel">
 							<div class="card-header">
 								<h3 class="card-title">REMETENTE</h3>
 							</div>
@@ -65,7 +68,7 @@
 
 					<div class="col-sm-6 col-lg-6 col-md-6">
 
-						<div class="card card-custom gutter-b">
+						<div class="card card-custom gutter-b cte-panel">
 							<div class="card-header">
 								<h3 class="card-title">DESTINATÁRIO</h3>
 							</div>
@@ -81,7 +84,7 @@
 
 					<div class="col-sm-6 col-lg-6 col-md-6">
 
-						<div class="card card-custom gutter-b">
+						<div class="card card-custom gutter-b cte-panel">
 							<div class="card-header">
 								<h3 class="card-title">VEICULO</h3>
 							</div>
@@ -97,7 +100,7 @@
 
 					<div class="col-sm-6 col-lg-6 col-md-6">
 
-						<div class="card card-custom gutter-b">
+						<div class="card card-custom gutter-b cte-panel">
 							<div class="card-header">
 								<h3 class="card-title">TOMADOR</h3>
 							</div>
@@ -115,7 +118,7 @@
 
 				<div class="row">
 					<div class="col-sm-6 col-xl-4 col-lg-6 col-md-6">
-						<div class="card card-custom gutter-b">
+						<div class="card card-custom gutter-b cte-panel">
 							<div class="card-header">
 								<h3 class="card-title">Componentes da CT-e</h3>
 							</div>
@@ -153,7 +156,7 @@
 					</div>
 
 					<div class="col-sm-6 col-xl-8 col-lg-6 col-md-6">
-						<div class="card card-custom gutter-b">
+						<div class="card card-custom gutter-b cte-panel">
 							<div class="card-header">
 								<h3 class="card-title">Medidas da CT-e</h3>
 							</div>

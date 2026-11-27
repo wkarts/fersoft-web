@@ -11,7 +11,12 @@
 	}
 </style>
 @endsection
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-catalog-config.css') }}?v={{ filemtime(public_path('css/fer-catalog-config.css')) }}">
+@endpush
 @section('content')
+<div class="fer-catalog-config fer-catalog-config--list fer-catalog-config--divisaoGrade">
+<h1 class="fer-catalog-config__heading">Divisões de Grade</h1>
 <div class="card card-custom gutter-b">
 
 
@@ -66,5 +71,5 @@
 		</div>
 	</div>
 </div>
-
+</div>
 @endsection

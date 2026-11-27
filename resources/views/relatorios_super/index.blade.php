@@ -1,4 +1,8 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-admin-modules.css') }}?v={{ filemtime(public_path('css/ui-admin-modules.css')) }}">
+@endpush
 
 @section('css')
 <style type="text/css">
@@ -11,6 +15,7 @@
 </style>
 @endsection
 @section('content')
+<div class="document-fiscal-page admin-page admin-page--relatorios-super">
 
 <div class="card gutter-b">
 	<div class="card-body">
@@ -499,6 +504,7 @@
 	</div>
 </div>
 
+</div>
 @section('javascript')
 <script type="text/javascript">
 	var SUBCATEGORIAS = [];

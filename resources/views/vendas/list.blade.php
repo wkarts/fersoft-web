@@ -1,6 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-sales-list.css') }}?v={{ filemtime(public_path('css/ui-sales-list.css')) }}">
+@endpush
 @section('content')
-    <div class="card card-custom gutter-b">
+<header class="fer-page__heading"><h1>Vendas</h1></header>
+<div class="card card-custom gutter-b fer-page fer-list fer-sales-list">
         <div class="card-body">
 
             <div class="" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
@@ -10,7 +15,7 @@
                 @endif
                 <input type="hidden" id="_token" value="{{ csrf_token() }}">
 
-                <form class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft" method="get" action="/vendas/filtro">
+                <form class="fer-filter fer-sales-filter @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft" method="get" action="/vendas/filtro">
                     <div class="row align-items-center">
 
                         <div class="form-group col-lg-2 col-sm-6">
@@ -117,13 +122,11 @@
                         @endif
 
                         <div class="col-lg-2 col-xl-2 mt-2 mt-lg-0">
-                            <button style="margin-top: 15px;" class="btn btn-light-primary px-6 font-weight-bold">Filtrar</button>
+                            <button type="submit" style="margin-top: 15px;" class="btn btn-light-primary px-6 font-weight-bold">Filtrar</button>
                         </div>
 
                     </div>
                 </form>
-                <br>
-
                 @if($certificado != null)
                     <button class="btn btn-dark float-right spinner-white spinner-right btn-consulta-status">
                         Consultar Status Sefaz
@@ -139,7 +142,7 @@
                 <h4 class="@if(env('ANIMACAO')) animate__animated @endif animate__backInRight">Lista de Vendas</h4>
 
                 <label class="@if(env('ANIMACAO')) animate__animated @endif animate__backInRight">Registros: <strong class="text-success">{{ sizeof($vendas) }}</strong></label>
-                <div class="row @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">
+                <div class="row fer-actions fer-sales-actions @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">
                     <div class="d-flex align-items-center @if(env('ANIMACAO')) animate__animated animate__backInRight @endif">
                         <a href="/vendas/nova" class="btn btn-success mr-3">
                             <i class="la la-plus"></i> Nova Venda
@@ -157,7 +160,7 @@
             <div class="row @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">
                 <div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
 
-                    <div class="wizard wizard-3" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
+                    <div class="wizard wizard-3 fer-results fer-sales-results" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
 
                         <!--begin: Wizard Nav-->
                         <div class="wizard-nav">
@@ -194,7 +197,7 @@
                                         <div class="row">
                                             <div class="col-xl-12">
 
-                                                <div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded">
+                                                <div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded fer-sales-grid">
                                                     <table class="datatable-table" style="max-width: 100%; overflow: scroll">
                                                         <thead class="datatable-head">
                                                         <tr class="datatable-row" style="left: 0px;">
@@ -242,38 +245,38 @@
 
                                                                 <td>
                                                                     <div class="row">
-																	<span style="width: 350px;">
+																	<span class="fer-sales-row-actions" style="width: 350px;">
 																		@if($podeEditar)
-                                                                            <a class="btn btn-warning btn-sm" onclick='swal("Atenção!", "Deseja editar este registro?", "warning").then((sim) => {if(sim){ location.href="/vendas/edit/{{ $v->id }}" }else{return false} })' href="#!">
+                                                                            <a class="btn btn-warning btn-sm" aria-label="Editar venda {{ $v->id }}" title="Editar venda" onclick='swal("Atenção!", "Deseja editar este registro?", "warning").then((sim) => {if(sim){ location.href="/vendas/edit/{{ $v->id }}" }else{return false} })' href="#!">
 																				<i class="la la-edit"></i>
 																			</a>
 
                                                                             @if($podeExcluir)
-                                                                                <a class="btn btn-danger btn-sm" onclick='swal("Atenção!", "Deseja remover esta venda?", "warning").then((sim) => {if(sim){ removerVenda("{{$v->id}}") }else{return false} })' href="#!">
+                                                                                <a class="btn btn-danger btn-sm" aria-label="Remover venda {{ $v->id }}" title="Remover venda" onclick='swal("Atenção!", "Deseja remover esta venda?", "warning").then((sim) => {if(sim){ removerVenda("{{$v->id}}") }else{return false} })' href="#!">
 																					<i class="la la-trash"></i>
 																				</a>
                                                                             @elseif($podeInutilizar)
-                                                                                <a class="btn btn-danger btn-sm" onclick='swal("Atenção!", "Deseja inutilizar a numeração desta venda?", "warning").then((sim) => {if(sim){ location.href="/vendas/inutilizar/{{ $v->id }}" }else{return false} })' href="#!">
+                                                                                <a class="btn btn-danger btn-sm" aria-label="Inutilizar numeração da venda {{ $v->id }}" title="Inutilizar numeração" onclick='swal("Atenção!", "Deseja inutilizar a numeração desta venda?", "warning").then((sim) => {if(sim){ location.href="/vendas/inutilizar/{{ $v->id }}" }else{return false} })' href="#!">
 																					<i class="la la-ban"></i>
 																				</a>
                                                                             @endif
                                                                         @endif
 
-																		<a class="btn btn-info btn-sm" href="/vendas/detalhar/{{ $v->id }}">
+																		<a class="btn btn-info btn-sm" aria-label="Detalhar venda {{ $v->id }}" title="Detalhar venda" href="/vendas/detalhar/{{ $v->id }}">
 																			<i class="la la-file"></i>
 																		</a>
 
-																		<a class="btn btn-primary btn-sm" title="Clonar venda" href="/vendas/clone/{{ $v->id }}">
+																		<a class="btn btn-primary btn-sm" title="Clonar venda" aria-label="Clonar venda {{ $v->id }}" href="/vendas/clone/{{ $v->id }}">
 																			<i class="la la-copy"></i>
 																		</a>
 
 																		@if($v->estado == 'DISPONIVEL' || $v->estado == 'REJEITADO')
-                                                                            <a class="btn btn-light btn-sm" target="_blank" title="Ver XML" href="/vendas/gerarXml/{{ $v->id }}">
+                                                                            <a class="btn btn-light btn-sm" target="_blank" title="Ver XML" aria-label="Ver XML da venda {{ $v->id }}" href="/vendas/gerarXml/{{ $v->id }}">
 																			<i class="las la-file-excel"></i>
 																		</a>
                                                                         @endif
 
-																		<a target="_blank" title="Imprimir pedido de venda" class="btn btn-info btn-sm" href="/vendas/imprimirPedido/{{ $v->id }}">
+																		<a target="_blank" title="Imprimir pedido de venda" aria-label="Imprimir pedido da venda {{ $v->id }}" class="btn btn-info btn-sm" href="/vendas/imprimirPedido/{{ $v->id }}">
 																			<i class="las la-print"></i>
 																		</a>
 																	</span>
@@ -352,7 +355,7 @@
 
                                             @if($certificado != null)
                                                 <div class="col-sm-12 col-lg-12 col-md-12 col-xl-12 mt-1">
-                                                    <div class="row">
+                                                    <div class="row fer-sales-nfe-actions">
                                                         <div class="col-sm-4 col-lg-4 col-md-4 col-xl-2 col-6">
                                                             <a id="btn-enviar" onclick="enviar()" style="width: 100%" disabled class="btn btn-success spinner-white spinner-right" href="#!">Enviar</a>
                                                         </div>
@@ -373,7 +376,7 @@
                                                         </div>
                                                     </div>
 
-                                                    <div class="row" style="margin-top: 5px;">
+                                                    <div class="row fer-sales-nfe-actions" style="margin-top: 5px;">
                                                         <div class="col-sm-4 col-lg-4 col-md-4 col-xl-2 col-6">
                                                             <a id="btn-danfe" target="_blank" style="width: 100%" class="btn btn-primary">Danfe temporária</a>
                                                         </div>
@@ -414,16 +417,16 @@
                                                     $podeEditar = !in_array(strtoupper(trim((string) ($v->estado ?? ''))), ['APROVADO', 'AUTORIZADO', 'CANCELADO'], true);
                                                 @endphp
                                                 <div class="col-sm-6 col-lg-6 col-md-6 col-xl-6">
-                                                    <div class="card card-custom gutter-b example example-compact">
+                                                    <div class="card card-custom gutter-b example example-compact fer-sales-card">
                                                         <div class="card-header">
                                                             <div class="card-title">
-                                                                <h3 style="width: 230px; font-size: 15px; height: 10px;" class="card-title">
+                                                                <h3 class="card-title fer-sales-card-title">
                                                                     {{ $v->cliente->razao_social ?? 'NÃO IDENTIFICADO' }}
                                                                 </h3>
                                                             </div>
                                                             <div class="card-toolbar">
                                                                 <div class="dropdown dropdown-inline" data-toggle="tooltip" title="Ações" data-placement="left">
-                                                                    <a href="#" class="btn btn-hover-light-primary btn-sm btn-icon" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                                    <a href="#" class="btn btn-hover-light-primary btn-sm btn-icon" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" aria-label="Ações da venda {{ $v->id }}">
                                                                         <i class="fa fa-ellipsis-h"></i>
                                                                     </a>
                                                                     <div class="dropdown-menu p-0 m-0 dropdown-menu-md dropdown-menu-right">
@@ -697,11 +700,11 @@
 
     <!-- MODAIS -->
 
-    <div class="modal fade" id="modal1" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
+    <div class="modal fer-sales-modal fade" id="modal1" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="salesCancelTitle" aria-hidden="true">
+        <div class="modal-dialog modal-lg fer-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">CANCELAR NFe <strong class="text-danger" id="numero_cancelamento"></strong></h5>
+                    <h5 class="modal-title" id="salesCancelTitle">CANCELAR NFe <strong class="text-danger" id="numero_cancelamento"></strong></h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">x</button>
                 </div>
                 <div class="modal-body">
@@ -722,11 +725,11 @@
         </div>
     </div>
 
-    <div class="modal fade" id="modal1_aux" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
+    <div class="modal fer-sales-modal fade" id="modal1_aux" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="salesCancelAuxTitle" aria-hidden="true">
+        <div class="modal-dialog modal-lg fer-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">CANCELAR NFe <strong class="text-danger" id="numero_cancelamento2"></strong></h5>
+                    <h5 class="modal-title" id="salesCancelAuxTitle">CANCELAR NFe <strong class="text-danger" id="numero_cancelamento2"></strong></h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">x</button>
                 </div>
                 <div class="modal-body">
@@ -748,12 +751,12 @@
         </div>
     </div>
 
-    <div class="modal fade" id="modal-whatsApp" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
+    <div class="modal fer-sales-modal fade" id="modal-whatsApp" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="salesWhatsappTitle" aria-hidden="true">
+        <div class="modal-dialog modal-lg fer-dialog" role="document">
             <form class="modal-content" method="post" action="/vendas/enviar-whats">
                 @csrf
                 <div class="modal-header">
-                    <h5 class="modal-title">Enviar WhatsApp</h5>
+                    <h5 class="modal-title" id="salesWhatsappTitle">Enviar WhatsApp</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">x</button>
                 </div>
                 <div class="modal-body">
@@ -794,11 +797,11 @@
         </div>
     </div>
 
-    <div class="modal fade" id="modal2" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
+    <div class="modal fer-sales-modal fade" id="modal2" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="salesQueryTitle" aria-hidden="true">
+        <div class="modal-dialog modal-lg fer-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">CONSULTA DE NFe</h5>
+                    <h5 class="modal-title" id="salesQueryTitle">CONSULTA DE NFe</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">x</button>
                 </div>
                 <div class="modal-body">
@@ -813,11 +816,11 @@
         </div>
     </div>
 
-    <div class="modal fade" id="modal3" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
+    <div class="modal fer-sales-modal fade" id="modal3" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="salesVoidTitle" aria-hidden="true">
+        <div class="modal-dialog modal-lg fer-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">INUTILIZAÇÃO DE NÚMERO(s) DE NFe </h5>
+                    <h5 class="modal-title" id="salesVoidTitle">INUTILIZAÇÃO DE NÚMERO(s) DE NFe </h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">x</button>
                 </div>
                 <div class="modal-body">
@@ -850,11 +853,11 @@
         </div>
     </div>
 
-    <div class="modal fade" id="modal4" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
+    <div class="modal fer-sales-modal fade" id="modal4" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="salesCorrectionTitle" aria-hidden="true">
+        <div class="modal-dialog modal-lg fer-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">CARTA DE CORREÇÃO NFe <strong class="text-danger" id="numero_correcao"></strong></h5>
+                    <h5 class="modal-title" id="salesCorrectionTitle">CARTA DE CORREÇÃO NFe <strong class="text-danger" id="numero_correcao"></strong></h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">x</button>
                 </div>
                 <div class="modal-body">
@@ -875,11 +878,11 @@
         </div>
     </div>
 
-    <div class="modal fade" id="modal4_aux" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
+    <div class="modal fer-sales-modal fade" id="modal4_aux" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="salesCorrectionAuxTitle" aria-hidden="true">
+        <div class="modal-dialog modal-lg fer-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">CARTA DE CORREÇÃO NFe <strong class="text-danger" id="numero_correcao_aux"></strong></h5>
+                    <h5 class="modal-title" id="salesCorrectionAuxTitle">CARTA DE CORREÇÃO NFe <strong class="text-danger" id="numero_correcao_aux"></strong></h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">x</button>
                 </div>
                 <div class="modal-body">
@@ -901,11 +904,11 @@
         </div>
     </div>
 
-    <div class="modal fade" id="modal5" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
+    <div class="modal fer-sales-modal fade" id="modal5" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="salesEmailTitle" aria-hidden="true">
+        <div class="modal-dialog modal-lg fer-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">ENVIAR EMAIL PEDIDO #<strong class="text-danger" id="numero_nf"></strong></h5>
+                    <h5 class="modal-title" id="salesEmailTitle">ENVIAR EMAIL PEDIDO #<strong class="text-danger" id="numero_nf"></strong></h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">x</button>
                 </div>
                 <div class="modal-body">

@@ -1,0 +1,300 @@
+/* Alignment shared by operational Blade forms in the refined shell. The markup,
+   field names, IDs and handlers still belong to their respective modules. */
+body.ui-native-shell .ui-page > .ui-admin {
+  --admin-ink: var(--ui-ink);
+  --admin-muted: var(--ui-muted);
+  --admin-line: var(--ui-border);
+  --admin-green: var(--ui-accent);
+  --admin-green-deep: var(--ui-accent-hover);
+  --admin-soft: var(--ui-bg);
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+}
+body.ui-native-shell .ui-page .ui-admin :is(.ui-admin-panel,.card) {
+  color: var(--ui-ink);
+  background: var(--ui-surface);
+  border-color: var(--ui-border);
+}
+body.ui-native-shell .ui-page .ui-admin :is(.ui-admin-panel-head,.ui-admin-panel-foot,.ui-admin-tabs) {
+  background: var(--ui-surface-alt);
+  border-color: var(--ui-border);
+}
+body.ui-native-shell .ui-page .ui-admin :is(.datatable-table,.table) {
+  color: var(--ui-ink);
+  background: var(--ui-surface);
+}
+body.ui-native-shell .ui-page .ui-admin :is(.datatable-table,.table) th {
+  color: var(--ui-muted);
+  background: var(--ui-surface-alt);
+}
+body.ui-native-shell .ui-page .ui-admin :is(.form-control,.form-select,.custom-select) {
+  color: var(--ui-ink);
+  background: var(--ui-surface);
+  border-color: var(--ui-border);
+}
+
+body.ui-native-shell .ui-page form,
+body.ui-native-shell .ui-page form :is(.kt-section,.kt-section__body,.wizard-form,.wizard-body) {
+  min-width: 0;
+}
+body.ui-native-shell .ui-page .fer-form .fer-panel > .container > .col-lg-12,
+body.ui-native-shell .ui-page .fer-form .fer-panel > .container-fluid > .col-lg-12 {
+  max-width: 100%;
+  padding-inline: 0;
+}
+body.ui-native-shell .ui-page form .kt-section__body > .row,
+body.ui-native-shell .ui-page form .form-row {
+  margin-inline: -8px;
+}
+body.ui-native-shell .ui-page form .kt-section__body > .row > [class*="col-"],
+body.ui-native-shell .ui-page form .form-row > [class*="col-"] {
+  min-width: 0;
+  padding-inline: 8px;
+}
+body.ui-native-shell .ui-page form .form-group > [class*="col-"]:not(.row),
+body.ui-native-shell .ui-page form .form-group > .form-field {
+  max-width: 100%;
+  padding-inline: 0;
+}
+body.ui-native-shell .ui-page form .row > .form-group > :is(label,.col-form-label) {
+  display: flex;
+  align-items: flex-end;
+  min-height: 26px;
+  padding: 0;
+  margin: 0 0 6px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+body.ui-native-shell .ui-page form .row > .form-group > label :is(i,svg) { flex: 0 0 auto; }
+body.ui-native-shell .ui-page form .form-group :is(.form-control,.custom-select,.form-select,textarea),
+body.ui-native-shell .ui-page form .form-group > .select2-container,
+body.ui-native-shell .ui-page form .form-group > div:not(.input-group) > .select2-container {
+  max-width: 100%;
+  min-width: 0;
+}
+body.ui-native-shell .ui-page form .form-group > .select2-container,
+body.ui-native-shell .ui-page form .form-group > div:not(.input-group) > .select2-container {
+  width: 100%!important;
+}
+body.ui-native-shell .ui-page form :is(.form-control,.custom-select,.form-select):disabled,
+body.ui-native-shell .ui-page form :is(.form-control,.custom-select,.form-select)[readonly] {
+  color: var(--ui-muted);
+  background: var(--ui-surface-alt);
+  border-color: var(--ui-border);
+  opacity: 1;
+}
+body.ui-native-shell .ui-page form :is(.form-text,.help-text,small.text-muted) {
+  color: var(--ui-muted)!important;
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+body.ui-native-shell .ui-page form .form-control-file {
+  display: block;
+  max-width: 100%;
+  color: var(--ui-ink);
+}
+body.ui-native-shell .ui-page form :is(.radio-inline,.checkbox-inline) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 15px;
+  min-height: 38px;
+}
+body.ui-native-shell .ui-page form :is(.radio-inline,.checkbox-inline) > label { margin: 0; }
+body.ui-native-shell .ui-page form .form-group > .switch { min-height: 38px; }
+body.ui-native-shell .ui-page form .kt-section__body > :is(h3,h4,h5),
+body.ui-native-shell .ui-page form .section-title {
+  color: var(--ui-ink);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 600;
+  margin: 8px 0 14px;
+}
+body.ui-native-shell .ui-page form .optional-section-box {
+  color: var(--ui-ink);
+  background: var(--ui-surface-alt);
+  border-color: var(--ui-border);
+  padding: 17px;
+}
+/* Older forms used one or two blank lines plus a pixel margin to make an
+   action column line up with the neighboring fields. Let the row do it. */
+body.ui-native-shell .ui-page form .row > .form-group:has(> br:first-child):has(> .btn) {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+body.ui-native-shell .ui-page form .row > .form-group:has(> br:first-child):has(> .btn) > br { display: none; }
+body.ui-native-shell .ui-page form .row > .form-group:has(> br:first-child):has(> .btn) > .btn {
+  max-width: 100%;
+  margin-top: 0!important;
+}
+body.ui-native-shell .ui-page form .card-footer > .row {
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+}
+body.ui-native-shell .ui-page form .card-footer > .row > [class*="col-"]:empty { display: none; }
+body.ui-native-shell .ui-page form .card-footer > .row > [class*="col-"]:has(> .btn) {
+  flex: 0 1 190px;
+  max-width: none;
+  min-width: 0;
+  padding: 0;
+}
+body.ui-native-shell .ui-page form .card-footer > .row > [class*="col-"] > .btn { width: 100%; }
+
+/* The users table has a natural height: two records must not leave a tall,
+   empty panel. Keep table and grid tabs, actions and their identifiers intact. */
+body.ui-native-shell .ui-page .ui-admin-usuarios > .ui-admin-panel { min-height: 0; }
+body.ui-native-shell .ui-page .ui-admin-usuarios #kt_user_profile_aside [role="tabpanel"] { padding-bottom: 0!important; }
+body.ui-native-shell .ui-page .ui-admin-usuarios #kt_datatable { margin-bottom: 0; }
+body.ui-native-shell .ui-page .ui-admin-usuarios #kt_datatable .datatable-table { table-layout: auto; }
+body.ui-native-shell .ui-page .ui-admin-usuarios #kt_datatable .datatable-cell:last-child > .codigo {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+body.ui-native-shell .ui-page .ui-admin-usuarios #kt_datatable .datatable-cell:last-child > .codigo > .btn { margin: 0; }
+
+@media (max-width: 767px) {
+  body.ui-native-shell .ui-page form .kt-section__body > .row,
+  body.ui-native-shell .ui-page form .form-row { margin-inline: -6px; }
+  body.ui-native-shell .ui-page form .kt-section__body > .row > [class*="col-"],
+  body.ui-native-shell .ui-page form .form-row > [class*="col-"] { padding-inline: 6px; }
+  body.ui-native-shell .ui-page form .card-footer > .row > [class*="col-"]:has(> .btn) {
+    flex: 1 1 135px;
+  }
+  body.ui-native-shell .ui-page form .optional-section-box { padding: 13px; }
+}
+
+/* Contact registers share a comfortable width and a real lookup column. */
+body.ui-native-shell .ui-page .ui-contact-register.fer-form > .fer-panel {
+  width: 100%;
+  max-width: 1320px;
+  margin-inline: auto;
+}
+body.ui-native-shell .ui-page .ui-contact-register form .ui-contact-lookup {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+}
+body.ui-native-shell .ui-page .ui-contact-register form .ui-contact-lookup > br { display: none; }
+body.ui-native-shell .ui-page .ui-contact-register form .ui-contact-lookup > .btn {
+  min-width: 38px;
+  min-height: 38px;
+  margin: 0;
+}
+
+/* Client identity, status and address follow the reading and tab order. */
+body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente :is(.ui-client-identity-fields,.ui-client-profile-fields,.ui-client-street-fields,.ui-client-address-fields) {
+  display: grid;
+  min-width: 0;
+  gap: 0 15px;
+  margin-inline: 0;
+}
+body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente :is(.ui-client-identity-fields,.ui-client-profile-fields,.ui-client-street-fields,.ui-client-address-fields) > .form-group {
+  width: auto;
+  max-width: none;
+  min-width: 0;
+  padding-inline: 0;
+  margin-bottom: 15px;
+}
+body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-identity-fields {
+  grid-template-columns: minmax(170px, 3fr) 40px minmax(0, 4fr) minmax(0, 4fr);
+}
+body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-profile-fields {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-profile-fields > .form-group:not(.d-none) {
+  grid-column: span 2;
+}
+body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-profile-fields > .form-group:has(#inativo),
+body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-profile-fields > .form-group:has(#data_nascimento) {
+  grid-column: span 1;
+}
+body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-profile-fields > .form-group:has(#inativo) > div {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: none;
+  min-height: 38px;
+  padding: 0;
+}
+body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-street-fields {
+  grid-template-columns: minmax(0, 4fr) minmax(130px, 1fr);
+}
+body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-address-fields {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-address-fields > .form-group:has(#complemento),
+body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-address-fields > .form-group:has(#kt_select2_1) {
+  grid-column: span 2;
+}
+body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-address-fields > .form-group:has(#kt_image_1) {
+  grid-column: 1 / -1;
+}
+body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-map-lookup > .btn {
+  width: 100%;
+  min-height: 38px;
+  white-space: normal;
+}
+
+/* Photo and optical-prescription dialogs belong to the client register. */
+body.ui-native-shell .ui-client-dialog .modal-dialog { max-width: min(1100px, calc(100vw - 28px)); }
+body.ui-native-shell .ui-client-dialog#modal-foto .modal-dialog { max-width: min(700px, calc(100vw - 28px)); }
+body.ui-native-shell .ui-client-dialog .modal-header { display: flex; align-items: center; gap: 10px; }
+body.ui-native-shell .ui-client-dialog .modal-header .modal-title { min-width: 0; overflow-wrap: anywhere; }
+body.ui-native-shell .ui-client-dialog .modal-header .close { display: flex; align-items: center; justify-content: center; margin: 0 0 0 auto; padding: 0; }
+body.ui-native-shell .ui-client-dialog .modal-body { max-height: calc(100dvh - 175px); overflow: auto; }
+body.ui-native-shell .ui-client-dialog .modal-footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+body.ui-native-shell .ui-client-dialog .modal-footer .btn { min-height: 36px; margin: 0; }
+body.ui-native-shell .ui-client-dialog#modal-foto #video { height: auto!important; max-height: min(48dvh, 400px); aspect-ratio: 4 / 3; object-fit: cover; background: #10272b; border-radius: 8px; }
+body.ui-native-shell .ui-client-dialog#modal-otica .modal-body > .row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 12px;
+}
+body.ui-native-shell .ui-client-dialog#modal-otica .modal-body > .row > [class*="col-"] {
+  width: auto;
+  max-width: none;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--ui-border, #dce7e7);
+  border-radius: 9px;
+  background: var(--ui-surface-alt, #fafcfc)!important;
+}
+body.ui-native-shell .ui-client-dialog#modal-otica .modal-body > .row > .col-lg-12 { grid-column: 1 / -1; }
+body.ui-native-shell .ui-client-dialog#modal-otica .modal-body .row > .form-group { min-width: 0; }
+
+@media (max-width: 1199px) {
+  body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-identity-fields {
+    grid-template-columns: minmax(0, 1fr) 40px;
+  }
+  body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-identity-fields > .form-group:nth-of-type(n+3) { grid-column: 1 / -1; }
+  body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-profile-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-profile-fields > .form-group:not(.d-none),
+  body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-profile-fields > .form-group:has(#inativo),
+  body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-profile-fields > .form-group:has(#data_nascimento) { grid-column: span 1; }
+  body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-address-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 575px) {
+  body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-identity-fields { grid-template-columns: minmax(0, 1fr) 40px; gap: 0 10px; }
+  body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-profile-fields,
+  body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-street-fields,
+  body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-address-fields { grid-template-columns: minmax(0, 1fr); }
+  body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-profile-fields > .form-group:not(.d-none),
+  body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-address-fields > .form-group:has(#complemento),
+  body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-address-fields > .form-group:has(#kt_select2_1) { grid-column: span 1; }
+  body.ui-native-shell .ui-client-dialog .modal-dialog { max-width: calc(100vw - 16px); margin: 8px auto; }
+  body.ui-native-shell .ui-client-dialog .modal-body { max-height: calc(100dvh - 145px); padding: 14px; }
+  body.ui-native-shell .ui-client-dialog#modal-otica .modal-body { max-height: calc(100dvh - 205px); }
+  body.ui-native-shell .ui-client-dialog .modal-footer .btn { flex: 1 1 100%; }
+  body.ui-native-shell .ui-client-dialog#modal-otica .modal-body > .row { grid-template-columns: minmax(0, 1fr); }
+  body.ui-native-shell .ui-client-dialog#modal-otica .modal-body > .row > [class*="col-"] { padding: 10px; }
+  body.ui-native-shell .ui-client-dialog#modal-otica .modal-body .row > .form-group { flex: 1 1 100px; max-width: 50%; }
+}

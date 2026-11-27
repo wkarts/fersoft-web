@@ -1,11 +1,16 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-operational-refinements.css') }}?v={{ filemtime(public_path('css/ui-operational-refinements.css')) }}">
+@endpush
 @section('content')
+<header class="fer-page__heading"><h1>Contas a Receber</h1></header>
 
-    <div class="card card-custom gutter-b">
+    <div class="card card-custom gutter-b fer-page fer-list fer-finance-list-ui fer-receivables-ui">
         <div class="card-body">
 
             {{-- (GRUPO) TOPO: BOTÕES DE CADASTRO E IMPORTAÇÃO --}}
-            <div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
+            <div class="fer-actions @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
                 <div class="col-12">
                     <div class="row">
                         <a href="/contasReceber/new" class="btn btn-lg btn-success">
@@ -33,7 +38,7 @@
             {{-- (GRUPO) FILTROS: Campos para busca e refinamento da listagem --}}
             <div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInRight" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
 
-                <form method="get" action="/contasReceber/filtro">
+                <form method="get" action="/contasReceber/filtro" class="fer-filter">
                     <div class="row align-items-center">
 
                         <div class="form-group col-lg-6 col-xl-5">
@@ -165,7 +170,7 @@
                 <label>Total de registros: {{sizeof($contas)}}</label>
 
                 {{-- (GRUPO) BARRA DE FERRAMENTAS: Seleção múltipla, Boletos e Excel --}}
-                <div class="row">
+                <div class="row fer-finance-list-ui__toolbar">
                     <div class="col-12">
                         <button id="btn_seleciona_varios" class="btn btn-light font-weight-bold">
                             <i class="la la-list"></i> Selecionar Varios
@@ -180,7 +185,7 @@
                         </button>
 
                         <a href="{{ url('/contasReceber/syncNotaFiscal') }}" class="btn btn-light font-weight-bold">
-                            <i class="fa fa-sync text-info"></i> Sincronizar NF das Vendas
+                            <i class="la la-sync text-info"></i> Sincronizar NF das Vendas
                         </a>
 
                         <a href="/contasReceber/export?{{ http_build_query(request()->all()) }}" class="btn btn-light font-weight-bold">
@@ -193,7 +198,7 @@
                 <div class="row">
                     <?php $somaValor = 0; $somaPago = 0; $somaPendente = 0; ?>
                     <div class="col-12">
-                        <div class="wizard wizard-3" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
+                        <div class="wizard wizard-3 fer-results" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
                             <div class="wizard-nav">
                                 <div class="wizard-steps px-8 py-8 px-lg-15 py-lg-3">
                                     <div class="wizard-step" data-wizard-type="step" data-wizard-state="done">
@@ -376,7 +381,7 @@
                                                                 <span></span>
                                                             </label>
                                                         @endif
-                                                        <h3 style="width: 230px; font-size: 20px; height: 10px;" class="card-title">
+                                                        <h3 class="card-title fer-finance-card__amount">
                                                             R$ {{number_format($c->valor_integral, $casasDecimais ?? 2, ',', '.')}}
                                                         </h3>
                                                     </div>
@@ -457,7 +462,7 @@
                     </div>
 
                     {{-- (GRUPO) RODAPÉ: Resumo financeiro e soma dos valores selecionados --}}
-                    <div class="card-body">
+                    <div class="card-body fer-finance-list-ui__totals">
                         <div class="row">
                             <div class="col-12">
                                 <div class="card card-custom gutter-b example example-compact">
@@ -485,7 +490,7 @@
 
     {{-- MODAL DE BAIXA PARCIAL --}}
     <div class="modal fade" id="modal_baixa_parcial" tabindex="-1" role="dialog" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-dialog modal-dialog-centered fer-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Baixa Parcial - Conta a Receber</h5>

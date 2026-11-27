@@ -1,10 +1,19 @@
 @extends('default.layout')
+@section('css')
+@unless(config('ui_theme.active', false))
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+@endunless
+@endsection
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+@endpush
 @section('content')
+<div class="ui-admin ui-admin-empresas">
 
 <div class="col-12 @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">
-	<div class="card card-custom gutter-b example example-compact">
+	<div class="ui-admin-panel gutter-b ">
 		<div class="col-lg-12">
-			<div class="card card-custom gutter-b example example-compact">
+			<div class="ui-admin-panel gutter-b ">
 
 			</div>
 			<div class="row">
@@ -15,13 +24,13 @@
 
 						<div class="col-sm-4 col-lg-4 col-md-4 col-12">
 
-							<div class="card card-custom gutter-b">
-								<div class="card-header">
+							<div class="ui-admin-panel gutter-b">
+								<div class="ui-admin-panel-head">
 									<h3 class="card-title">
 										Total de Cadastros
 									</h3>
 								</div>
-								<div class="card-body" style="height: 200px;">
+								<div class="ui-admin-panel-body" style="height: 200px;">
 
 									<h4>Clientes: <strong class="text-info">{{sizeof($empresa->clientes)}}</strong></h4>
 									<h4>Fornecedores: <strong class="text-info">{{sizeof($empresa->fornecedores)}}</strong></h4>
@@ -34,13 +43,13 @@
 
 						<div class="col-sm-4 col-lg-4 col-md-4 col-12">
 
-							<div class="card card-custom gutter-b">
-								<div class="card-header">
+							<div class="ui-admin-panel gutter-b">
+								<div class="ui-admin-panel-head">
 									<h3 class="card-title">
 										Total de Documentos
 									</h3>
 								</div>
-								<div class="card-body" style="height: 200px;">
+								<div class="ui-admin-panel-body" style="height: 200px;">
 
 									<h4>NFe: <strong class="text-info">{{$empresa->nfes()}}</strong></h4>
 									<h4>NFCe: <strong class="text-info">{{$empresa->nfces()}}</strong></h4>
@@ -52,13 +61,13 @@
 
 						<div class="col-sm-4 col-lg-4 col-md-4 col-12">
 
-							<div class="card card-custom gutter-b">
-								<div class="card-header">
+							<div class="ui-admin-panel gutter-b">
+								<div class="ui-admin-panel-head">
 									<h3 class="card-title">
 										Registros
 									</h3>
 								</div>
-								<div class="card-body" style="height: 200px;">
+								<div class="ui-admin-panel-body" style="height: 200px;">
 
 									<h4>Vendas: <strong class="text-info">{{sizeof($empresa->vendas)}}</strong></h4>
 									<h4>Vendas PDV: <strong class="text-info">{{sizeof($empresa->vendasCaixa)}}</strong></h4>
@@ -91,4 +100,5 @@
 	</div>
 </div>
 
+</div>
 @endsection

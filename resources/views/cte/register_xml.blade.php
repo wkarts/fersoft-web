@@ -1,4 +1,7 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-cte.css') }}?v={{ filemtime(public_path('css/ui-cte.css')) }}">
+@endpush
 @section('content')
 
 <style type="text/css">
@@ -23,10 +26,10 @@
 		display: block;
 	}
 </style>
-<div class="card card-custom gutter-b">
+<div class="cte-page cte-page--register_xml">
 
 
-	<div class="card-body">
+	<div class="cte-page__content card-body">
 		<div class="content d-flex flex-column flex-column-fluid" id="kt_content" >
 
 			<div class="row" id="anime" style="display: none">
@@ -36,9 +39,9 @@
 				</div>
 			</div>
 
-			<div class="col-lg-12" id="content">
-				<h1 class="text-success">EMISSÃO DE CTe</h1>
-				<h3 class="card-title">DADOS INICIAIS</h3>
+			<div class="col-lg-12 cte-form-content" id="content">
+				<div class="cte-page__heading"><h1 class="cte-page__title">EMISSÃO DE CTe</h1></div>
+				<h3 class="cte-section-title cte-initial-title">DADOS INICIAIS</h3>
 
 				<input type="hidden" id="clientes" value="{{json_encode($clientes)}}" name="">
 				<input type="hidden" id="_token" value="{{csrf_token()}}" name="">
@@ -164,7 +167,7 @@
 										<div class="row" id="info-remetente" style="display: block">
 											<div class="col-xl-12">
 
-												<div class="card card-custom gutter-b">
+												<div class="card card-custom gutter-b cte-panel">
 													<div class="card-body">
 
 														<h4 class="center-align">REMENTE SELECIONADO</h4>
@@ -207,7 +210,7 @@
 										<div class="row" id="info-destinatario" style="display: block">
 											<div class="col-xl-12">
 
-												<div class="card card-custom gutter-b">
+												<div class="card card-custom gutter-b cte-panel">
 													<div class="card-body">
 
 														<h4 class="center-align">DESTINÁTARIO SELECIONADO</h4>
@@ -259,7 +262,7 @@
 										<div class="row" id="info-expedidor" style="display: none">
 											<div class="col-xl-12">
 
-												<div class="card card-custom gutter-b">
+												<div class="card card-custom gutter-b cte-panel">
 													<div class="card-body">
 
 														<h4 class="center-align">EXPEDIDOR SELECIONADO</h4>
@@ -308,7 +311,7 @@
 										<div class="row" id="info-recebedor" style="display: none">
 											<div class="col-xl-12">
 
-												<div class="card card-custom gutter-b">
+												<div class="card card-custom gutter-b cte-panel">
 													<div class="card-body">
 
 														<h4 class="center-align">RECEBEDOR SELECIONADO</h4>
@@ -341,7 +344,7 @@
 					</div>
 				</div>
 
-				<div class="card card-custom gutter-b">
+				<div class="card card-custom gutter-b cte-panel">
 
 					<div class="card-body">
 
@@ -352,7 +355,7 @@
 									<!--begin: Wizard Nav-->
 
 									<div class="wizard-nav">
-										<h1>Referência de Documento para CTe</h1>
+										<h2 class="cte-section-title">Referência de Documento para CTe</h2>
 										<div class="wizard-steps px-8 py-8 px-lg-15 py-lg-3">
 											<!--begin::Wizard Step 1 Nav-->
 											<div class="wizard-step" data-wizard-type="step" data-wizard-state="done">
@@ -483,14 +486,14 @@
 					</div>
 				</div>
 
-				<div class="card card-custom gutter-b">
+				<div class="card card-custom gutter-b cte-panel">
 
 					<div class="card-body">
 
 						<div class="row">
 							<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
 
-								<h1>Informações da Carga</h1>
+								<h2 class="cte-section-title">Informações da Carga</h2>
 
 								<div class="row">
 
@@ -544,7 +547,7 @@
 								</div>
 
 								<hr>
-								<h4 class="text-info">Informações de Quantidade</h4>
+								<h3 class="cte-subsection-title">Informações de Quantidade</h3>
 								<div class="row align-items-center">
 
 									<div class="form-group validated col-sm-3 col-lg-3 col-12">
@@ -605,7 +608,7 @@
 								</div>
 
 								<hr>
-								<h4 class="text-info">Componentes da carga</h4>
+								<h3 class="cte-subsection-title">Componentes da carga</h3>
 								<p class="text-danger">*A soma dos valores dos componentes deve ser igual ao valor a receber</p>
 								<div class="row align-items-center">
 
@@ -661,15 +664,15 @@
 					</div>
 				</div>
 
-				<div class="card card-custom gutter-b">
+				<div class="card card-custom gutter-b cte-panel">
 
 					<div class="card-body">
 
 						<div class="row">
 							<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
 
-								<h1>Informações da Entrega</h1>
-								<h4 class="text-info">Endereço do tomador</h4>
+								<h2 class="cte-section-title">Informações da Entrega</h2>
+								<h3 class="cte-subsection-title">Endereço do tomador</h3>
 								<div class="row">
 
 									<div class="form-group validated col-sm-3 col-lg-3 col-12">
